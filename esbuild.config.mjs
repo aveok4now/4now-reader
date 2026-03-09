@@ -23,6 +23,8 @@ const context = await esbuild.context({
     "@lezer/lr",
     ...builtins,
   ],
+  jsx: "automatic",
+  jsxImportSource: "react",
   format: "cjs",
   target: "es2018",
   logLevel: "info",
