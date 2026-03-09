@@ -1,0 +1,11 @@
+{
+  "id": "read4sidian",
+  "name": "Read4sidian",
+  "version": "0.1.0",
+  "minAppVersion": "1.4.0",
+  "description": "Read EPUB books directly inside your Obsidian vault.",
+  "author": "",
+  "authorUrl": "",
+  "fundingUrl": "",
+  "isDesktopOnly": false
+}
