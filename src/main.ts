@@ -1,10 +1,12 @@
-import { Notice, Plugin, TFile, WorkspaceLeaf } from 'obsidian';
-import { DEFAULT_SETTINGS, Read4sidianSettingsTab } from './settings';
-import type { PluginData } from './models/plugin-data';
-import { setLocale, t } from './i18n';
-import { ReaderSessionService } from './services/ReaderSessionService';
-import { READER_VIEW_TYPE, ReaderView } from './views/ReaderView';
-import type { ReadingProgress } from './models/types';
+import { Plugin, TFile, WorkspaceLeaf } from "obsidian";
+import { setLocale, t } from "./i18n";
+import { DEFAULT_LIBRARY_UI_STATE, type PluginData } from "./models/plugin-data";
+import type { ReadingProgress } from "./models/types";
+import { LibraryIndexService } from "./services/LibraryIndexService";
+import { ReaderSessionService } from "./services/ReaderSessionService";
+import { DEFAULT_SETTINGS, Read4sidianSettingsTab } from "./settings";
+import { LIBRARY_VIEW_TYPE, LibraryView } from "./views/LibraryView";
+import { READER_VIEW_TYPE, ReaderView } from "./views/ReaderView";
 
 const DEFAULT_DATA: PluginData = {
 	settings: { ...DEFAULT_SETTINGS },
@@ -13,17 +15,24 @@ const DEFAULT_DATA: PluginData = {
 	readingProgress: {},
 	bookmarks: {},
 	highlights: {},
+	libraryUiState: { ...DEFAULT_LIBRARY_UI_STATE },
 };
 
 export default class Read4sidianPlugin extends Plugin {
 	data: PluginData = { ...DEFAULT_DATA, settings: { ...DEFAULT_SETTINGS } };
 	private sessionService!: ReaderSessionService;
+	private libraryService!: LibraryIndexService;
 
 	async onload(): Promise<void> {
 		await this.loadPluginData();
 		setLocale(this.data.settings.locale);
 
-		this.sessionService = new ReaderSessionService(this);
+		this.sessionService = new ReaderSessionService(this, this.data);
+		this.libraryService = new LibraryIndexService(
+			this.app.vault,
+			this.data,
+			() => this.savePluginData(),
+		);
 
 		this.registerView(
 			READER_VIEW_TYPE,
@@ -36,30 +45,84 @@ export default class Read4sidianPlugin extends Plugin {
 				),
 		);
 
-		this.registerExtensions(['epub'], READER_VIEW_TYPE);
+		this.registerView(
+			LIBRARY_VIEW_TYPE,
+			(leaf) =>
+				new LibraryView(
+					leaf,
+					this.data,
+					(vaultPath, newTab) => this.openEpubByPath(vaultPath, newTab),
+					() => this.savePluginData(),
+				),
+		);
+
+		this.registerExtensions(["epub"], READER_VIEW_TYPE);
+
+		this.addRibbonIcon("library", t("command.openLibrary"), () =>
+			this.activateLibraryView(),
+		);
 
 		this.addCommand({
-			id: 'open-epub',
-			name: t('command.openEpub'),
-			callback: () => {
-				new Notice(t('reader.opening'));
-			},
+			id: "open-library",
+			name: t("command.openLibrary"),
+			callback: () => this.activateLibraryView(),
 		});
 
 		this.addSettingTab(new Read4sidianSettingsTab(this.app, this));
 
 		this.registerEvent(
-			this.app.workspace.on('file-menu', (menu, file) => {
-				if (file instanceof TFile && file.extension === 'epub') {
+			this.app.workspace.on("file-menu", (menu, file) => {
+				if (file instanceof TFile && file.extension === "epub") {
 					menu.addItem((item) => {
 						item
-							.setTitle(t('command.openEpub'))
-							.setIcon('book-open')
+							.setTitle(t("command.openEpub"))
+							.setIcon("book-open")
 							.onClick(() => this.openEpubFile(file));
 					});
 				}
 			}),
 		);
+
+		this.registerEvent(
+			this.app.vault.on("create", (file) => {
+				if (file instanceof TFile && file.extension === "epub") {
+					void this.libraryService
+						.scanFile(file)
+						.then(() => this.savePluginData())
+						.then(() => this.invalidateLibraryView());
+				}
+			}),
+		);
+
+		this.registerEvent(
+			this.app.vault.on("delete", (file) => {
+				if (file instanceof TFile && file.extension === "epub") {
+					this.libraryService.removeFile(file.path);
+					void this.savePluginData().then(() => this.invalidateLibraryView());
+				}
+			}),
+		);
+
+		this.registerEvent(
+			this.app.vault.on("rename", (file, oldPath) => {
+				if (file instanceof TFile && file.extension === "epub") {
+					this.libraryService.renameFile(oldPath, file.path, file);
+					void this.savePluginData().then(() => this.invalidateLibraryView());
+				}
+			}),
+		);
+
+		this.registerEvent(
+			this.app.workspace.on("active-leaf-change", () =>
+				this.updateLibraryActiveBook(),
+			),
+		);
+
+		this.app.workspace.onLayoutReady(() => {
+			if (this.data.settings.scanOnStartup) {
+				void this.scanLibrary();
+			}
+		});
 	}
 
 	async onunload(): Promise<void> {
@@ -72,6 +135,7 @@ export default class Read4sidianPlugin extends Plugin {
 			...DEFAULT_DATA,
 			...saved,
 			settings: { ...DEFAULT_SETTINGS, ...(saved?.settings ?? {}) },
+			libraryUiState: { ...DEFAULT_LIBRARY_UI_STATE, ...(saved?.libraryUiState ?? {}) },
 		};
 	}
 
@@ -79,16 +143,61 @@ export default class Read4sidianPlugin extends Plugin {
 		await this.saveData(this.data);
 	}
 
-	async openEpubFile(file: TFile): Promise<void> {
-		const leaf: WorkspaceLeaf = this.data.settings.openInNewLeaf
-			? this.app.workspace.getLeaf('tab')
-			: this.app.workspace.getLeaf(false);
+	async openEpubFile(file: TFile, forceNewLeaf?: boolean): Promise<void> {
+		if (this.data.libraryIndex[file.path]) {
+			this.data.libraryIndex[file.path].lastOpened = Date.now();
+		}
 
-		await leaf.setViewState({ type: READER_VIEW_TYPE, active: true });
+		const openNew = forceNewLeaf ?? this.data.settings.openInNewLeaf;
+		const leaf: WorkspaceLeaf = openNew
+			? this.app.workspace.getLeaf("tab")
+			: (this.app.workspace.getMostRecentLeaf(this.app.workspace.rootSplit) ?? this.app.workspace.getLeaf("tab"));
+
+		await leaf.setViewState({ type: READER_VIEW_TYPE, state: { file: file.path }, active: true });
 		this.app.workspace.revealLeaf(leaf);
 
-		const view = leaf.view as ReaderView;
-		await view.openBook(file);
+		this.invalidateLibraryView();
+	}
+
+	private async openEpubByPath(vaultPath: string, forceNewLeaf?: boolean): Promise<void> {
+		const file = this.app.vault.getAbstractFileByPath(vaultPath);
+		if (file instanceof TFile) {
+			await this.openEpubFile(file, forceNewLeaf);
+		}
+	}
+
+	private async activateLibraryView(): Promise<void> {
+		const existing = this.app.workspace.getLeavesOfType(LIBRARY_VIEW_TYPE);
+		if (existing.length > 0) {
+			this.app.workspace.revealLeaf(existing[0]);
+			return;
+		}
+		const leaf = this.app.workspace.getLeftLeaf(false);
+		if (leaf) {
+			await leaf.setViewState({ type: LIBRARY_VIEW_TYPE, active: true });
+			this.app.workspace.revealLeaf(leaf);
+		}
+	}
+
+	private async scanLibrary(): Promise<void> {
+		await this.libraryService.scanVault();
+		this.invalidateLibraryView();
+	}
+
+	private invalidateLibraryView(): void {
+		for (const leaf of this.app.workspace.getLeavesOfType(LIBRARY_VIEW_TYPE)) {
+			(leaf.view as LibraryView).invalidate();
+		}
+	}
+
+	private updateLibraryActiveBook(): void {
+		const readerView = this.app.workspace.getActiveViewOfType(ReaderView);
+		const activePath = readerView
+			? (readerView.getState() as { file?: string }).file ?? null
+			: null;
+		for (const leaf of this.app.workspace.getLeavesOfType(LIBRARY_VIEW_TYPE)) {
+			(leaf.view as LibraryView).setActiveBook(activePath);
+		}
 	}
 
 	private getProgress(vaultPath: string): Promise<ReadingProgress | undefined> {
