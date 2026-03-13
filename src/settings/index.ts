@@ -28,7 +28,7 @@ export const DEFAULT_SETTINGS: Read4sidianSettings = {
 	exportFolder: "Reading/Exports",
 	scanOnStartup: true,
 	footnoteBehavior: "popover",
-	openInNewLeaf: true,
+	openInNewLeaf: false,
 	locale: "auto",
 };
 
@@ -129,6 +129,7 @@ export class Read4sidianSettingsTab extends PluginSettingTab {
 					}),
 			);
 
+		// TODO: dropdown instead of text input
 		new Setting(containerEl)
 			.setName(t("settings.fontFamily.name"))
 			.setDesc(t("settings.fontFamily.desc"))

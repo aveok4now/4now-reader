@@ -55,8 +55,28 @@ const en = {
 	"settings.locale.en": "English",
 	"settings.locale.ru": "Russian",
 
+	// Library
+	"library.title": "Library",
+	"library.empty": "No books found in vault",
+	"library.scanning": "Scanning vault…",
+	"library.recent": "Recent",
+	"library.allBooks": "All books",
+	"library.search": "Search by title, author, or path…",
+	"library.noResults": "No books match your search",
+	"library.sort.titleAsc": "Title A → Z",
+	"library.sort.titleDesc": "Title Z → A",
+	"library.sort.authorAsc": "Author A → Z",
+	"library.sort.lastOpened": "Recently opened",
+	"library.sort.label": "Sort",
+	"library.tabs.recent": "Recent",
+	"library.tabs.all": "All Books",
+	"library.tabs.favorites": "Favorites",
+	"library.recent.empty": "No books opened yet",
+	"library.favorites.empty": "No favorites yet",
+
 	// Commands
 	"command.openEpub": "Open EPUB book",
+	"command.openLibrary": "Open library",
 } as const;
 
 export type TranslationKey = keyof typeof en;
