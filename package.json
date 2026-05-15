@@ -1,5 +1,5 @@
 {
-  "name": "read4sidian",
+  "name": "4now-reader",
   "version": "0.1.0",
   "description": "EPUB reader for Obsidian",
   "main": "main.js",
@@ -7,9 +7,22 @@
     "dev": "node esbuild.config.mjs",
     "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "obsidian-plugin",
+    "epub",
+    "reader",
+    "ebook"
+  ],
+  "author": "aveok4now",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aveok4now/obsidian-4now-reader.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aveok4now/obsidian-4now-reader/issues"
+  },
+  "homepage": "https://github.com/aveok4now/obsidian-4now-reader#readme",
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/react": "^19.2.14",

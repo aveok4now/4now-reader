@@ -1,4 +1,5 @@
 import { Plugin } from "obsidian";
+import { LIBRARY, TIMING } from "../constants";
 import type { PluginData } from "../models/plugin-data";
 import type { ReadingProgress } from "../models/types";
 
@@ -8,6 +9,7 @@ export class ReaderSessionService {
 	constructor(
 		private readonly plugin: Plugin,
 		private readonly data: PluginData,
+		private readonly onSaved?: () => void,
 	) {}
 
 	getProgress(vaultPath: string): ReadingProgress | undefined {
@@ -33,7 +35,8 @@ export class ReaderSessionService {
 		this.debounceTimer = setTimeout(() => {
 			this.debounceTimer = null;
 			void this.plugin.saveData(this.data);
-		}, 1500);
+			this.onSaved?.();
+		}, TIMING.SESSION_SAVE_DEBOUNCE_MS);
 	}
 
 	async flush(): Promise<void> {
@@ -48,7 +51,7 @@ export class ReaderSessionService {
 		const deduped = (this.data.recentBooks ?? []).filter(
 			(p) => p !== vaultPath,
 		);
-		this.data.recentBooks = [vaultPath, ...deduped].slice(0, 20);
+		this.data.recentBooks = [vaultPath, ...deduped].slice(0, LIBRARY.RECENT_BOOKS_LIMIT);
 		await this.plugin.saveData(this.data);
 	}
 }

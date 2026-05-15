@@ -1,26 +1,30 @@
 import ePub from "epubjs";
+import type { Book } from "epubjs";
 import { ItemView, TFile, type ViewStateResult, WorkspaceLeaf } from "obsidian";
 import { createRoot } from "react-dom/client";
 import { EpubRenderer } from "../components/EpubRenderer";
 import { t } from "../i18n";
 import type { ReadingProgress } from "../models/types";
 import { ReaderSessionService } from "../services/ReaderSessionService";
-import type { Read4sidianSettings } from "../settings";
+import type { FourNowReaderSettings } from "../settings";
 
-export const READER_VIEW_TYPE = "read4sidian-reader";
+export const READER_VIEW_TYPE = "4now-reader-view";
 
 export class ReaderView extends ItemView {
 	private root: ReturnType<typeof createRoot> | null = null;
 	private currentTitle: string | null = null;
 	private currentFile: TFile | null = null;
+	private currentBook: Book | null = null;
+	private currentCfi: string | undefined = undefined;
 
 	constructor(
 		leaf: WorkspaceLeaf,
 		private sessionService: ReaderSessionService,
-		private settings: Read4sidianSettings,
+		private settings: FourNowReaderSettings,
 		private loadProgress: (
 			vaultPath: string,
 		) => Promise<ReadingProgress | undefined>,
+		private saveSettings: () => Promise<void>,
 	) {
 		super(leaf);
 	}
@@ -53,12 +57,15 @@ export class ReaderView extends ItemView {
 	}
 
 	async onOpen(): Promise<void> {
+		// Hide Obsidian's view-header so the epub gets full leaf height.
+		(this.containerEl.children[0] as HTMLElement).style.setProperty("display", "none", "important");
 		this.root = createRoot(this.containerEl.children[1] as HTMLElement);
-		this.root.render(<div className="r4s-state-screen" />);
+		this.root.render(<div className="fnr-state-screen" />);
 	}
 
 	async onClose(): Promise<void> {
 		this.root?.unmount();
+		(this.containerEl.children[0] as HTMLElement).style.removeProperty("display");
 		await this.sessionService.flush();
 	}
 
@@ -69,27 +76,55 @@ export class ReaderView extends ItemView {
 
 		const arrayBuffer = await this.app.vault.readBinary(file);
 		const book = ePub(arrayBuffer);
+		this.currentBook = book;
+		await book.opened;
 		const metadata = await book.loaded.metadata;
 
 		this.currentTitle = metadata.title || file.basename;
 		this.leaf.updateHeader();
 
 		const progress = await this.loadProgress(file.path);
-		this.root?.render(
-			<EpubRenderer
-				book={book}
-				settings={this.settings}
-				initialCfi={progress?.cfi}
-				onProgress={(cfi, pct, chapter) =>
-					this.sessionService.recordProgress(file.path, cfi, pct, chapter)
-				}
-			/>,
-		);
+		this.currentCfi = progress?.cfi;
+		this.renderEpub(book, this.currentCfi, file);
 
 		await this.sessionService.updateRecent(file.path);
 	}
 
-	updateSettings(settings: Read4sidianSettings): void {
-		this.settings = settings;
+	private renderEpub(book: Book, initialCfi?: string, file?: TFile): void {
+		const f = file ?? this.currentFile;
+		if (!f) return;
+		// `key` forces a fresh rendition when flow/column settings change.
+		// textWidth is handled inside EpubRenderer via CSS — no remount.
+		const renditionKey = this.settings.readingMode;
+		this.root?.render(
+			<EpubRenderer
+				key={renditionKey}
+				book={book}
+				settings={{ ...this.settings }}
+				initialCfi={initialCfi}
+				onProgress={(cfi, pct, chapter) => {
+					this.currentCfi = cfi;
+					this.sessionService.recordProgress(f.path, cfi, pct, chapter);
+				}}
+				onSettingsChange={this.handleSettingsChange}
+			/>,
+		);
 	}
+
+	updateSettings(newSettings: FourNowReaderSettings): void {
+		this.settings = newSettings;
+		if (!this.currentBook || !this.currentFile) return;
+		this.renderEpub(this.currentBook, this.currentCfi, this.currentFile);
+	}
+
+	private handleSettingsChange = async (
+		partial: Partial<FourNowReaderSettings>,
+	): Promise<void> => {
+		Object.assign(this.settings, partial);
+		await this.saveSettings();
+		// Rebuild only when readingMode changes (drives key=); other settings stay local.
+		if ("readingMode" in partial && this.currentBook && this.currentFile) {
+			this.renderEpub(this.currentBook, this.currentCfi, this.currentFile);
+		}
+	};
 }

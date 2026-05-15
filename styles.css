@@ -1,6 +1,7 @@
+
 /* Reader view shell */
 
-.r4s-reader-view {
+.fnr-reader-view {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -11,17 +12,16 @@
 
 /* Toolbar */
 
-.r4s-toolbar {
+.fnr-toolbar {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
 	gap: 4px;
 	padding: 4px 8px;
-	border-bottom: 1px solid var(--background-modifier-border);
 	flex-shrink: 0;
 }
 
-.r4s-toolbar-btn {
+.fnr-toolbar-btn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -34,23 +34,32 @@
 	transition: color 0.15s ease;
 }
 
-.r4s-toolbar-btn:hover {
+.fnr-toolbar-btn:hover {
 	color: var(--text-normal);
 }
 
-.r4s-toolbar-btn.is-active {
+.fnr-toolbar-btn.is-active {
 	color: var(--interactive-accent);
 }
 
 /* Epub container & iframe */
 
-.r4s-epub-container {
+.fnr-epub-container {
 	flex: 1;
 	overflow: hidden;
 	position: relative;
+	min-width: 0;
+	min-height: 0;
 }
 
-.r4s-epub-frame {
+/* epubjs creates a div.epub-container inside ours. In scroll mode epubjs sets
+   overflow: auto on it (both axes). We never need horizontal scroll — content
+   adapts to the container width — so suppress it unconditionally. */
+.fnr-epub-container .epub-container {
+	overflow-x: hidden !important;
+}
+
+.fnr-epub-frame {
 	width: 100%;
 	height: 100%;
 	border: none;
@@ -59,7 +68,7 @@
 
 /* State screens (loading / error) */
 
-.r4s-state-screen {
+.fnr-state-screen {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -71,12 +80,12 @@
 	gap: 12px;
 }
 
-.r4s-state-screen svg {
+.fnr-state-screen svg {
 	width: 3rem;
 	height: 3rem;
 }
 
-.r4s-error-detail {
+.fnr-error-detail {
 	font-size: 0.75rem;
 	font-family: var(--font-monospace);
 	color: var(--text-faint);
@@ -88,14 +97,14 @@
 
 /* Progress bar */
 
-.r4s-progress-bar {
+.fnr-progress-bar {
 	height: 4px;
 	background: var(--background-modifier-border);
 	flex-shrink: 0;
 	width: 100%;
 }
 
-.r4s-progress-fill {
+.fnr-progress-fill {
 	height: 100%;
 	background: var(--interactive-accent);
 	transition: width 0.3s ease;
@@ -104,30 +113,30 @@
 
 /* Library view */
 
-.r4s-library {
+.fnr-library {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
 	overflow: hidden;
 }
 
-.r4s-library-toolbar {
+.fnr-library-toolbar {
 	padding: 8px;
 	border-bottom: 1px solid var(--background-modifier-border);
 	flex-shrink: 0;
 }
 
-.r4s-library-toolbar .search-input-container {
+.fnr-library-toolbar .search-input-container {
 	width: 100%;
 }
 
-.r4s-library-search {
+.fnr-library-search {
 	width: 100%;
 }
 
 /* Tab bar */
 
-.r4s-tab-bar {
+.fnr-tab-bar {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
@@ -137,7 +146,7 @@
 	flex-shrink: 0;
 }
 
-.r4s-tab-btn {
+.fnr-tab-btn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -152,29 +161,29 @@
 	transition: color 0.15s ease;
 }
 
-.r4s-tab-btn:hover {
+.fnr-tab-btn:hover {
 	color: var(--text-normal);
 	background: var(--background-modifier-hover);
 }
 
-.r4s-tab-btn.is-active {
+.fnr-tab-btn.is-active {
 	color: var(--interactive-accent);
 }
 
-.r4s-tab-spacer {
+.fnr-tab-spacer {
 	flex: 1;
 }
 
 /* Library body */
 
-.r4s-library-body {
+.fnr-library-body {
 	flex: 1;
 	overflow-y: auto;
 	min-height: 0;
 	padding: 2px 0;
 }
 
-.r4s-library-empty {
+.fnr-library-empty {
 	padding: 24px 12px;
 	text-align: center;
 	color: var(--text-muted);
@@ -183,7 +192,7 @@
 
 /* Book card */
 
-.r4s-book-card {
+.fnr-book-card {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
@@ -194,46 +203,46 @@
 	transition: background 0.1s ease;
 }
 
-.r4s-book-card:hover {
+.fnr-book-card:hover {
 	background: var(--background-modifier-hover);
 }
 
-.r4s-book-card.is-active {
+.fnr-book-card.is-active {
 	background: var(--background-modifier-hover);
 }
 
-.r4s-book-card.is-active .r4s-book-card-title {
+.fnr-book-card.is-active .fnr-book-card-title {
 	color: var(--interactive-accent);
 }
 
-.r4s-book-card-title {
+.fnr-book-card-title {
 	font-size: var(--font-ui-small);
 	color: var(--text-normal);
 	font-weight: 500;
 	line-height: 1.3;
 }
 
-.r4s-book-card-author {
+.fnr-book-card-author {
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
 }
 
-.r4s-book-card-meta {
+.fnr-book-card-meta {
 	font-size: var(--font-ui-smaller);
 	color: var(--text-faint);
 }
 
-.r4s-book-card-progress {
+.fnr-book-card-progress {
 	display: flex;
 	align-items: center;
 	gap: 6px;
 }
 
-.r4s-book-card-progress .r4s-progress-bar {
+.fnr-book-card-progress .fnr-progress-bar {
 	flex: 1;
 }
 
-.r4s-book-card-pct {
+.fnr-book-card-pct {
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
 	white-space: nowrap;
@@ -243,17 +252,276 @@
 
 /* Epub iframe theme overrides  */
 
-.r4s-epub-light body {
+.fnr-epub-light body {
 	background: #ffffff;
 	color: #1a1a1a;
 }
 
-.r4s-epub-dark body {
+.fnr-epub-dark body {
 	background: #1e1e1e;
 	color: #d4d4d4;
 }
 
-.r4s-epub-sepia body {
+.fnr-epub-sepia body {
 	background: #f4ecd8;
 	color: #3b2f2f;
 }
+
+/* Reader wrap — fills the entire .view-content area (position: relative in Obsidian).
+   position: absolute + inset: 0 is more reliable than height: 100% because it does not
+   depend on the height being propagated through the parent chain. */
+
+.fnr-reader-wrap {
+	display: flex;
+	flex-direction: column;
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+}
+
+/* Toolbar chapter button (flex-1, shows chapter title + progress meta) */
+
+.fnr-toolbar-chapter {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	overflow: hidden;
+	min-width: 0;
+	font-size: var(--font-ui-small);
+}
+
+.fnr-chapter-title {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
+}
+
+.fnr-chapter-meta {
+	flex-shrink: 0;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-variant-numeric: tabular-nums;
+}
+
+/* Toolbar autohide */
+
+.fnr-toolbar--autohide {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 10;
+	border-bottom: none;
+	background: var(--background-primary);
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.2s;
+}
+
+.fnr-toolbar--autohide.is-visible {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+/* Trigger zone — thin strip above the epub iframe that captures hover */
+
+.fnr-autohide-zone {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 36px;
+	z-index: 9;
+	pointer-events: auto;
+}
+
+.fnr-autohide-zone.is-inactive {
+	pointer-events: none;
+}
+
+/* Disabled toolbar buttons */
+
+.fnr-toolbar-btn:disabled {
+	opacity: 0.3;
+	cursor: default;
+	pointer-events: none;
+}
+
+/* Overlay backdrop — transparent click-trap to close panels on outside click */
+
+.fnr-overlay-backdrop {
+	position: absolute;
+	inset: 0;
+	z-index: 10;
+}
+
+/* Overlay panel (shared base) — styled like Obsidian's own menus */
+
+.fnr-overlay-panel {
+	position: absolute;
+	top: var(--fnr-toolbar-height, 36px);
+	z-index: 11;
+	background: var(--background-primary);
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-l);
+	overflow: hidden;
+}
+
+/* TOC panel */
+
+.fnr-toc-panel-wrap {
+	left: 0;
+	width: 18em;
+	min-width: 10em;
+	max-width: 60%;
+	max-height: calc(100% - var(--fnr-toolbar-height, 36px));
+	overflow-y: auto;
+	position: absolute;
+}
+
+/* Custom resize handle — full-height strip on the right edge of the TOC panel */
+
+.fnr-toc-resize-handle {
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: 0.4em;
+	height: 100%;
+	cursor: col-resize;
+	z-index: 1;
+}
+
+.fnr-toc-item {
+	display: block;
+	width: 100%;
+	text-align: left;
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: var(--size-2-1) var(--size-4-2);
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	line-height: 1.4;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.fnr-toc-item:hover {
+	background: var(--background-modifier-hover);
+}
+
+.fnr-toc-item.is-active {
+	color: var(--interactive-accent);
+	background: var(--background-modifier-hover);
+}
+
+/* Typography popover panel */
+
+.fnr-typography-panel-wrap {
+	right: 0;
+}
+
+/* Theme panel */
+
+.fnr-theme-panel-wrap {
+	right: 0;
+}
+
+.fnr-theme-toggle {
+	flex-direction: column;
+	gap: 2px;
+}
+
+.fnr-typography-popover {
+	padding: var(--size-4-2);
+	min-width: 220px;
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+}
+
+.fnr-popover-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+}
+
+.fnr-popover-row--label {
+	margin-top: 4px;
+}
+
+.fnr-popover-row--muted {
+	opacity: 0.4;
+}
+
+.fnr-typography-popover input[type="range"]:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.fnr-popover-value {
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.fnr-typography-popover input[type="range"] {
+	width: 100%;
+	accent-color: var(--interactive-accent);
+}
+
+/* Reading mode segmented toggle */
+
+.fnr-mode-toggle {
+	display: flex;
+	gap: 4px;
+}
+
+.fnr-mode-btn {
+	flex: 1;
+	background: none;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	padding: 4px 8px;
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	transition:
+		color 0.15s ease,
+		border-color 0.15s ease;
+}
+
+.fnr-mode-btn:hover {
+	color: var(--text-normal);
+}
+
+.fnr-mode-btn.is-active {
+	color: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+	border-bottom-width: 2px;
+}
+
+/* Font family text input */
+
+.fnr-font-input {
+	width: 100%;
+	font-size: var(--font-ui-small);
+	background: var(--background-modifier-form-field);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	padding: 4px 8px;
+	color: var(--text-normal);
+}
+
+.fnr-font-input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+}
+
+

@@ -13,7 +13,7 @@ import type {
 } from "../models/plugin-data";
 import type { BookMeta, ReadingProgress } from "../models/types";
 
-export const LIBRARY_VIEW_TYPE = "read4sidian-library";
+export const LIBRARY_VIEW_TYPE = "4now-reader-library";
 
 function sortBooks(books: BookMeta[], order: LibrarySortOrder): BookMeta[] {
 	return [...books].sort((a, b) => {
@@ -60,33 +60,33 @@ function TabBar({ activeTab, onTabChange, sortOrder, onSortChange }: TabBarProps
 	};
 
 	return (
-		<div className="r4s-tab-bar">
+		<div className="fnr-tab-bar">
 			<button
 				ref={tip(t("library.tabs.recent"))}
-				className={`r4s-tab-btn${activeTab === "recent" ? " is-active" : ""}`}
+				className={`fnr-tab-btn${activeTab === "recent" ? " is-active" : ""}`}
 				onClick={() => onTabChange("recent")}
 			>
 				<Clock size={16} />
 			</button>
 			<button
 				ref={tip(t("library.tabs.all"))}
-				className={`r4s-tab-btn${activeTab === "all" ? " is-active" : ""}`}
+				className={`fnr-tab-btn${activeTab === "all" ? " is-active" : ""}`}
 				onClick={() => onTabChange("all")}
 			>
 				<BookOpen size={16} />
 			</button>
 			<button
 				ref={tip(t("library.tabs.favorites"))}
-				className={`r4s-tab-btn${activeTab === "favorites" ? " is-active" : ""}`}
+				className={`fnr-tab-btn${activeTab === "favorites" ? " is-active" : ""}`}
 				onClick={() => onTabChange("favorites")}
 			>
 				<Heart size={16} />
 			</button>
-			<div className="r4s-tab-spacer" />
+			<div className="fnr-tab-spacer" />
 			{activeTab !== "recent" && (
 				<button
 					ref={tip(t("library.sort.label"))}
-					className="r4s-tab-btn"
+					className="fnr-tab-btn"
 					onClick={openSortMenu}
 				>
 					<ArrowUpDown size={16} />
@@ -119,26 +119,26 @@ function BookCard({ book, progress, isActive, onClick, onNewTabClick }: BookCard
 
 	return (
 		<div
-			className={`r4s-book-card${isActive ? " is-active" : ""}`}
+			className={`fnr-book-card${isActive ? " is-active" : ""}`}
 			onClick={handleClick}
 			onAuxClick={(e) => e.button === 1 && onNewTabClick()}
 			role="button"
 			tabIndex={0}
 			onKeyDown={(e) => e.key === "Enter" && onClick()}
 		>
-			<div className="r4s-book-card-info">
-				<div className="r4s-book-card-title">{book.title || book.vaultPath}</div>
+			<div className="fnr-book-card-info">
+				<div className="fnr-book-card-title">{book.title || book.vaultPath}</div>
 				{book.author && (
-					<div className="r4s-book-card-author">{book.author}</div>
+					<div className="fnr-book-card-author">{book.author}</div>
 				)}
-				{lastOpened && <div className="r4s-book-card-meta">{lastOpened}</div>}
+				{lastOpened && <div className="fnr-book-card-meta">{lastOpened}</div>}
 			</div>
 			{progress && (
-				<div className="r4s-book-card-progress">
-					<div className="r4s-progress-bar">
-						<div className="r4s-progress-fill" style={{ width: `${pct}%` }} />
+				<div className="fnr-book-card-progress">
+					<div className="fnr-progress-bar">
+						<div className="fnr-progress-fill" style={{ width: `${pct}%` }} />
 					</div>
-					<span className="r4s-book-card-pct">{pct}%</span>
+					<span className="fnr-book-card-pct">{pct}%</span>
 				</div>
 			)}
 		</div>
@@ -197,7 +197,7 @@ function LibraryPanel({
 		if (activeTab === "recent") {
 			if (recentBooks.length === 0) {
 				return (
-					<div className="r4s-library-empty">{t("library.recent.empty")}</div>
+					<div className="fnr-library-empty">{t("library.recent.empty")}</div>
 				);
 			}
 			return recentBooks.map((b) => (
@@ -214,14 +214,13 @@ function LibraryPanel({
 
 		if (activeTab === "favorites") {
 			return (
-				<div className="r4s-library-empty">{t("library.favorites.empty")}</div>
+				<div className="fnr-library-empty">{t("library.favorites.empty")}</div>
 			);
 		}
 
-		// activeTab === "all"
 		if (filteredAll.length === 0) {
 			return (
-				<div className="r4s-library-empty">
+				<div className="fnr-library-empty">
 					{query ? t("library.noResults") : t("library.empty")}
 				</div>
 			);
@@ -239,12 +238,12 @@ function LibraryPanel({
 	};
 
 	return (
-		<div className="r4s-library">
-			<div className="r4s-library-toolbar">
+		<div className="fnr-library">
+			<div className="fnr-library-toolbar">
 				<div className="search-input-container">
 					<input
 						type="search"
-						className="r4s-library-search"
+						className="fnr-library-search"
 						placeholder={t("library.search")}
 						value={query}
 						onChange={(e) => setQuery(e.target.value)}
@@ -257,7 +256,7 @@ function LibraryPanel({
 				sortOrder={sortOrder}
 				onSortChange={handleSortChange}
 			/>
-			<div className="r4s-library-body">{renderContent()}</div>
+			<div className="fnr-library-body">{renderContent()}</div>
 		</div>
 	);
 }

@@ -1,12 +1,7 @@
 export type ReadingMode = "scroll" | "paginated";
 
-// Phase 1: 4 themes. Extended set (cream, solarized, night, high-contrast) - Phase 3
-export type ReaderTheme = "adaptive" | "light" | "dark" | "sepia";
+export type ReaderTheme = "adaptive" | "light" | "dark" | "sepia" | "cream" | "night";
 
-/**
- * Preset highlight colors and arbitrary hex from color picker.
- * Full highlights implementation - Phase 4.
- */
 export type HighlightColor =
 	| "yellow"
 	| "green"
@@ -14,10 +9,9 @@ export type HighlightColor =
 	| "pink"
 	| "orange"
 	| "purple"
-	| (string & {}); // arbitrary hex
+	| (string & {});
 
 export interface BookMeta {
-	// In MVP - vaultPath is used as stable key
 	vaultPath: string;
 	title: string;
 	author: string;

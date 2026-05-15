@@ -1,5 +1,5 @@
 import type { BookMeta, Bookmark, Highlight, ReadingProgress } from './types';
-import type { Read4sidianSettings } from '../settings';
+import type { FourNowReaderSettings } from '../settings';
 
 export type LibrarySortOrder = "title-asc" | "title-desc" | "author-asc" | "last-opened";
 export type LibraryTab = "recent" | "all" | "favorites";
@@ -15,7 +15,7 @@ export const DEFAULT_LIBRARY_UI_STATE: LibraryUiState = {
 };
 
 export interface PluginData {
-  settings: Read4sidianSettings;
+  settings: FourNowReaderSettings;
   /** vaultPath -> BookMeta */
   libraryIndex: Record<string, BookMeta>;
   /** vaultPaths, most recent first (max 20) */

@@ -1,4 +1,8 @@
 docs/plans
+docs/smoke-checklist.md
 node_modules
 main.js
 main.js.map
+.DS_Store
+*.log
+.obsidian/

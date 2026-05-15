@@ -9,6 +9,12 @@ const en = {
 	"toolbar.toc": "Table of contents",
 	"toolbar.addBookmark": "Add bookmark",
 	"toolbar.theme": "Theme",
+	"toolbar.typography": "Typography",
+	"toolbar.prevChapter": "Previous chapter",
+	"toolbar.nextChapter": "Next chapter",
+	"toolbar.prevPage": "Previous page",
+	"toolbar.nextPage": "Next page",
+	"toolbar.autoHide": "Auto-hide toolbar",
 
 	// Reading modes
 	"mode.scroll": "Scroll",
@@ -19,6 +25,8 @@ const en = {
 	"theme.light": "Light",
 	"theme.dark": "Dark",
 	"theme.sepia": "Sepia",
+	"theme.cream": "Cream",
+	"theme.night": "Night",
 
 	// Settings
 	"settings.heading.reading": "Reading",
@@ -36,6 +44,8 @@ const en = {
 	"settings.lineHeight.desc": "Line spacing multiplier.",
 	"settings.fontFamily.name": "Font family",
 	"settings.fontFamily.desc": "Leave empty to use the book's own fonts.",
+	"settings.paragraphSpacing.name": "Paragraph spacing",
+	"settings.paragraphSpacing.desc": "Space between paragraphs in pixels.",
 	"settings.textWidth.name": "Text width",
 	"settings.textWidth.desc": "Maximum content width in pixels.",
 	"settings.exportFolder.name": "Export folder",
@@ -45,6 +55,7 @@ const en = {
 	"settings.scanOnStartup.desc": "Index EPUB files when Obsidian opens.",
 	"settings.openInNewLeaf.name": "Open book in new tab",
 	"settings.openInNewLeaf.desc": "When disabled, reuses the current tab.",
+	"settings.toolbarAutoHide.desc": "Hides the toolbar until you hover over the reader area.",
 	"settings.footnoteBehavior.name": "Footnote behaviour",
 	"settings.footnoteBehavior.desc": "How footnote links are handled.",
 	"settings.footnoteBehavior.popover": "Show in popover",
@@ -73,6 +84,13 @@ const en = {
 	"library.tabs.favorites": "Favorites",
 	"library.recent.empty": "No books opened yet",
 	"library.favorites.empty": "No favorites yet",
+
+	// Settings reset
+	"settings.reset.tooltip": "Reset to default",
+	"settings.reset.allButton": "Reset reading settings",
+	"settings.reset.confirmMessage": "Reset all reading and appearance settings to defaults?",
+	"settings.reset.confirmYes": "Reset",
+	"settings.reset.confirmNo": "Cancel",
 
 	// Commands
 	"command.openEpub": "Open EPUB book",

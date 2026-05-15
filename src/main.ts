@@ -4,7 +4,7 @@ import { DEFAULT_LIBRARY_UI_STATE, type PluginData } from "./models/plugin-data"
 import type { ReadingProgress } from "./models/types";
 import { LibraryIndexService } from "./services/LibraryIndexService";
 import { ReaderSessionService } from "./services/ReaderSessionService";
-import { DEFAULT_SETTINGS, Read4sidianSettingsTab } from "./settings";
+import { DEFAULT_SETTINGS, FourNowReaderSettingsTab } from "./settings";
 import { LIBRARY_VIEW_TYPE, LibraryView } from "./views/LibraryView";
 import { READER_VIEW_TYPE, ReaderView } from "./views/ReaderView";
 
@@ -18,16 +18,20 @@ const DEFAULT_DATA: PluginData = {
 	libraryUiState: { ...DEFAULT_LIBRARY_UI_STATE },
 };
 
-export default class Read4sidianPlugin extends Plugin {
+export default class FourNowReaderPlugin extends Plugin {
 	data: PluginData = { ...DEFAULT_DATA, settings: { ...DEFAULT_SETTINGS } };
 	private sessionService!: ReaderSessionService;
 	private libraryService!: LibraryIndexService;
+	// Holds the library's active-book highlight while focus is in the library pane.
+	private lastActiveReaderPath: string | null = null;
 
 	async onload(): Promise<void> {
 		await this.loadPluginData();
 		setLocale(this.data.settings.locale);
 
-		this.sessionService = new ReaderSessionService(this, this.data);
+		this.sessionService = new ReaderSessionService(this, this.data, () =>
+			this.invalidateLibraryView(),
+		);
 		this.libraryService = new LibraryIndexService(
 			this.app.vault,
 			this.data,
@@ -42,6 +46,7 @@ export default class Read4sidianPlugin extends Plugin {
 					this.sessionService,
 					this.data.settings,
 					(vaultPath) => this.getProgress(vaultPath),
+					() => this.savePluginData(),
 				),
 		);
 
@@ -68,7 +73,7 @@ export default class Read4sidianPlugin extends Plugin {
 			callback: () => this.activateLibraryView(),
 		});
 
-		this.addSettingTab(new Read4sidianSettingsTab(this.app, this));
+		this.addSettingTab(new FourNowReaderSettingsTab(this.app, this));
 
 		this.registerEvent(
 			this.app.workspace.on("file-menu", (menu, file) => {
@@ -156,6 +161,9 @@ export default class Read4sidianPlugin extends Plugin {
 		await leaf.setViewState({ type: READER_VIEW_TYPE, state: { file: file.path }, active: true });
 		this.app.workspace.revealLeaf(leaf);
 
+		// active-leaf-change fires before ReaderView.setState() resolves, so set here.
+		this.lastActiveReaderPath = file.path;
+		this.setLibraryActiveBook(file.path);
 		this.invalidateLibraryView();
 	}
 
@@ -186,18 +194,35 @@ export default class Read4sidianPlugin extends Plugin {
 
 	private invalidateLibraryView(): void {
 		for (const leaf of this.app.workspace.getLeavesOfType(LIBRARY_VIEW_TYPE)) {
-			(leaf.view as LibraryView).invalidate();
+			if (leaf.view instanceof LibraryView) leaf.view.invalidate();
+		}
+	}
+
+	private setLibraryActiveBook(path: string | null): void {
+		for (const leaf of this.app.workspace.getLeavesOfType(LIBRARY_VIEW_TYPE)) {
+			if (leaf.view instanceof LibraryView) leaf.view.setActiveBook(path);
 		}
 	}
 
 	private updateLibraryActiveBook(): void {
 		const readerView = this.app.workspace.getActiveViewOfType(ReaderView);
-		const activePath = readerView
-			? (readerView.getState() as { file?: string }).file ?? null
-			: null;
-		for (const leaf of this.app.workspace.getLeavesOfType(LIBRARY_VIEW_TYPE)) {
-			(leaf.view as LibraryView).setActiveBook(activePath);
+		if (readerView) {
+			this.lastActiveReaderPath =
+				(readerView.getState() as { file?: string }).file ?? null;
 		}
+		// Propagate the cached path so library clicks don't clear the highlight.
+		this.setLibraryActiveBook(this.lastActiveReaderPath);
+	}
+
+	propagateSettingsToViews(): void {
+		this.app.workspace
+			.getLeavesOfType(READER_VIEW_TYPE)
+			.forEach((leaf) => {
+				const view = leaf.view;
+				if (view instanceof ReaderView) {
+					view.updateSettings(this.data.settings);
+				}
+			});
 	}
 
 	private getProgress(vaultPath: string): Promise<ReadingProgress | undefined> {

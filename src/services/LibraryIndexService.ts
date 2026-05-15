@@ -22,8 +22,12 @@ export class LibraryIndexService {
 		try {
 			const ab = await this.vault.readBinary(file);
 			const book = ePub(ab);
-			const meta = await book.loaded.metadata;
-			book.destroy();
+			// Swallow secondary rejections; don't book.destroy() here — it would
+			// tear down internals while these promises are still in-flight.
+			void book.opened.catch(() => {});
+			const { metadata, ...rest } = book.loaded;
+			Object.values(rest).forEach((p) => void p.catch(() => {}));
+			const meta = await metadata;
 
 			const existing = this.data.libraryIndex[file.path];
 			this.data.libraryIndex[file.path] = {

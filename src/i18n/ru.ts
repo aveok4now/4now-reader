@@ -9,6 +9,12 @@ const ru: Partial<Record<TranslationKey, string>> = {
 	"toolbar.toc": "Содержание",
 	"toolbar.addBookmark": "Добавить закладку",
 	"toolbar.theme": "Тема",
+	"toolbar.typography": "Типографика",
+	"toolbar.prevChapter": "Предыдущая глава",
+	"toolbar.nextChapter": "Следующая глава",
+	"toolbar.prevPage": "Предыдущая страница",
+	"toolbar.nextPage": "Следующая страница",
+	"toolbar.autoHide": "Автоскрытие панели инструментов",
 
 	"mode.scroll": "Прокрутка",
 	"mode.paginated": "Постраничный",
@@ -17,6 +23,8 @@ const ru: Partial<Record<TranslationKey, string>> = {
 	"theme.light": "Светлая",
 	"theme.dark": "Тёмная",
 	"theme.sepia": "Сепия",
+	"theme.cream": "Кремовая",
+	"theme.night": "Ночная",
 
 	"settings.heading.reading": "Чтение",
 	"settings.heading.appearance": "Внешний вид",
@@ -34,6 +42,8 @@ const ru: Partial<Record<TranslationKey, string>> = {
 	"settings.fontFamily.name": "Шрифт",
 	"settings.fontFamily.desc":
 		"Оставьте пустым, чтобы использовать шрифты книги.",
+	"settings.paragraphSpacing.name": "Отступ между абзацами",
+	"settings.paragraphSpacing.desc": "Расстояние между абзацами в пикселях.",
 	"settings.textWidth.name": "Ширина текста",
 	"settings.textWidth.desc": "Максимальная ширина контента в пикселях.",
 	"settings.exportFolder.name": "Папка экспорта",
@@ -44,6 +54,7 @@ const ru: Partial<Record<TranslationKey, string>> = {
 	"settings.openInNewLeaf.name": "Открывать в новой вкладке",
 	"settings.openInNewLeaf.desc":
 		"Если выключено — переиспользует текущую вкладку.",
+	"settings.toolbarAutoHide.desc": "Скрывает панель инструментов до наведения курсора на область чтения.",
 	"settings.footnoteBehavior.name": "Поведение сносок",
 	"settings.footnoteBehavior.desc": "Как обрабатываются ссылки на сноски.",
 	"settings.footnoteBehavior.popover": "Показывать во всплывающем окне",
@@ -72,6 +83,13 @@ const ru: Partial<Record<TranslationKey, string>> = {
 	"library.tabs.favorites": "Избранные",
 	"library.recent.empty": "Ещё не открывали книги",
 	"library.favorites.empty": "Нет избранных книг",
+
+	// Settings reset
+	"settings.reset.tooltip": "Сбросить к значению по умолчанию",
+	"settings.reset.allButton": "Сбросить настройки чтения",
+	"settings.reset.confirmMessage": "Сбросить все настройки чтения и внешнего вида к значениям по умолчанию?",
+	"settings.reset.confirmYes": "Сбросить",
+	"settings.reset.confirmNo": "Отмена",
 
 	"command.openEpub": "Открыть EPUB-книгу",
 	"command.openLibrary": "Открыть библиотеку",
