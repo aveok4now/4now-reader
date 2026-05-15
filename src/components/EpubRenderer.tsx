@@ -1,18 +1,14 @@
 import type { Book } from "epubjs";
 import type { ForNowReaderSettings } from "../settings";
+import type { PanelKey } from "./reader/ReaderToolbar";
 
-import { ChevronLeft, ChevronRight, Heart, Sun, Type } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-import { TIMING, resolveThemeColors } from "../constants";
-import { t } from "../i18n";
-import { READER } from "../constants";
-import { tip } from "../utils";
+import { READER, TIMING, resolveThemeColors } from "../constants";
 
+import { ReaderOverlays } from "./reader/ReaderOverlays";
+import { ReaderToolbar } from "./reader/ReaderToolbar";
 import { useEpubRendition } from "./reader/useEpubRendition";
-import { ThemePanel } from "./ThemePanel";
-import { TocOverlay } from "./TocOverlay";
-import { TypographyPopover } from "./TypographyPopover";
 
 interface EpubRendererProps {
   book: Book;
@@ -45,10 +41,8 @@ export function EpubRenderer({
     localSettingsRef.current = localSettings;
   }, [localSettings]);
 
-  const [activePanel, setActivePanel] = useState<
-    "toc" | "typography" | "theme" | null
-  >(null);
-  const activePanelRef = useRef<typeof activePanel>(null);
+  const [activePanel, setActivePanel] = useState<PanelKey | null>(null);
+  const activePanelRef = useRef<PanelKey | null>(null);
   useEffect(() => {
     activePanelRef.current = activePanel;
   }, [activePanel]);
@@ -64,16 +58,6 @@ export function EpubRenderer({
     initialCfi,
     onProgress,
   });
-  const {
-    progress,
-    isFirst,
-    isLast,
-    chapterTitle,
-    currentHref,
-    displayedPage,
-    displayedTotal,
-    navItems,
-  } = state;
 
   const [tocWidth, setTocWidth] = useState<number | null>(null);
 
@@ -103,7 +87,6 @@ export function EpubRenderer({
   const [toolbarVisible, setToolbarVisible] = useState(true);
   const hideTimerRef = useRef<number | null>(null);
 
-  // Esc closes any open overlay panel.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setActivePanel(null);
@@ -187,7 +170,8 @@ export function EpubRenderer({
     );
   }, []);
 
-  const toolbarClass = `fnr-toolbar${localSettings.toolbarAutoHide ? ` fnr-toolbar--autohide${toolbarVisible ? " is-visible" : ""}` : ""}`;
+  const togglePanel = (panel: PanelKey) =>
+    setActivePanel((p) => (p === panel ? null : panel));
 
   return (
     <div className="fnr-reader-wrap" ref={readerWrapRef}>
@@ -198,98 +182,26 @@ export function EpubRenderer({
         />
       )}
 
-      <div
-        className={toolbarClass}
+      <ReaderToolbar
+        readingMode={localSettings.readingMode}
+        autoHide={localSettings.toolbarAutoHide}
+        visible={toolbarVisible}
+        isFirst={state.isFirst}
+        isLast={state.isLast}
+        isPaginated={isPaginated}
+        chapterTitle={state.chapterTitle}
+        progress={state.progress}
+        displayedPage={state.displayedPage}
+        displayedTotal={state.displayedTotal}
+        activePanel={activePanel}
+        isFavorite={isFavorite}
+        onPrev={controller.prev}
+        onNext={controller.next}
+        onPanelToggle={togglePanel}
+        onToggleFavorite={onToggleFavorite}
         onMouseEnter={localSettings.toolbarAutoHide ? showToolbar : undefined}
         onMouseLeave={localSettings.toolbarAutoHide ? hideToolbar : undefined}
-      >
-        <button
-          className="fnr-toolbar-btn"
-          disabled={isFirst}
-          ref={
-            tip(
-              t(
-                localSettings.readingMode === "paginated"
-                  ? "toolbar.prevPage"
-                  : "toolbar.prevChapter",
-              ),
-            ) as React.Ref<HTMLButtonElement>
-          }
-          onClick={controller.prev}
-        >
-          <ChevronLeft size={16} />
-        </button>
-
-        <button
-          className={`fnr-toolbar-btn fnr-toolbar-chapter${activePanel === "toc" ? " is-active" : ""}`}
-          ref={tip(t("toolbar.toc")) as React.Ref<HTMLButtonElement>}
-          onClick={() => setActivePanel((p) => (p === "toc" ? null : "toc"))}
-        >
-          <span className="fnr-chapter-title">
-            {chapterTitle || t("toolbar.toc")}
-          </span>
-          <span className="fnr-chapter-meta">
-            {isPaginated && displayedTotal > 0
-              ? `${displayedPage}/${displayedTotal}`
-              : progress > 0
-                ? `${Math.round(progress)}%`
-                : ""}
-          </span>
-        </button>
-
-        <button
-          className="fnr-toolbar-btn"
-          disabled={isLast}
-          ref={
-            tip(
-              t(
-                localSettings.readingMode === "paginated"
-                  ? "toolbar.nextPage"
-                  : "toolbar.nextChapter",
-              ),
-            ) as React.Ref<HTMLButtonElement>
-          }
-          onClick={controller.next}
-        >
-          <ChevronRight size={16} />
-        </button>
-
-        <button
-          className={`fnr-toolbar-btn${activePanel === "typography" ? " is-active" : ""}`}
-          ref={tip(t("toolbar.typography")) as React.Ref<HTMLButtonElement>}
-          onClick={() =>
-            setActivePanel((p) => (p === "typography" ? null : "typography"))
-          }
-        >
-          <Type size={16} />
-        </button>
-
-        <button
-          className={`fnr-toolbar-btn${activePanel === "theme" ? " is-active" : ""}`}
-          ref={tip(t("toolbar.theme")) as React.Ref<HTMLButtonElement>}
-          onClick={() =>
-            setActivePanel((p) => (p === "theme" ? null : "theme"))
-          }
-        >
-          <Sun size={16} />
-        </button>
-
-        <button
-          className={`fnr-toolbar-btn fnr-favorite-btn${isFavorite ? " is-favorited" : ""}`}
-          ref={
-            tip(
-              t(
-                isFavorite
-                  ? "library.favorites.tooltip.remove"
-                  : "library.favorites.tooltip.add",
-              ),
-            ) as React.Ref<HTMLButtonElement>
-          }
-          onClick={onToggleFavorite}
-        >
-          <Heart size={16} fill={isFavorite ? "currentColor" : "none"} />
-        </button>
-      </div>
+      />
 
       <div
         ref={containerRef}
@@ -297,51 +209,17 @@ export function EpubRenderer({
         style={{ background: resolveThemeColors(localSettings.readerTheme).bg }}
       />
 
-      {activePanel !== null && (
-        <div
-          className="fnr-overlay-backdrop"
-          onClick={() => setActivePanel(null)}
-        />
-      )}
-      {activePanel === "toc" && (
-        <div
-          className="fnr-overlay-panel fnr-toc-panel-wrap"
-          style={tocWidth !== null ? { width: `${tocWidth}px` } : undefined}
-        >
-          <div
-            className="fnr-toc-resize-handle"
-            onMouseDown={handleTocResizeStart}
-          />
-          <TocOverlay
-            navItems={navItems}
-            activeHref={currentHref}
-            onSelect={(href) => {
-              controller.displayHref(href);
-              setActivePanel(null);
-            }}
-            onClose={() => setActivePanel(null)}
-          />
-        </div>
-      )}
-      {activePanel === "typography" && (
-        <div className="fnr-overlay-panel fnr-typography-panel-wrap">
-          <TypographyPopover
-            settings={localSettings}
-            onSettingsChange={handleSettingsChange}
-          />
-        </div>
-      )}
-      {activePanel === "theme" && (
-        <div className="fnr-overlay-panel fnr-theme-panel-wrap">
-          <ThemePanel
-            currentTheme={localSettings.readerTheme}
-            onSelect={(theme) => {
-              handleSettingsChange({ readerTheme: theme });
-              setActivePanel(null);
-            }}
-          />
-        </div>
-      )}
+      <ReaderOverlays
+        activePanel={activePanel}
+        navItems={state.navItems}
+        currentHref={state.currentHref}
+        tocWidth={tocWidth}
+        settings={localSettings}
+        onClose={() => setActivePanel(null)}
+        onTocResizeStart={handleTocResizeStart}
+        onTocSelect={controller.displayHref}
+        onSettingsChange={handleSettingsChange}
+      />
     </div>
   );
 }
