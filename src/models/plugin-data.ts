@@ -1,6 +1,8 @@
 import type { BookMeta, Bookmark, Highlight, ReadingProgress } from "./types";
 import type { ForNowReaderSettings } from "../settings";
 
+import { DEFAULT_SETTINGS } from "../settings";
+
 export type LibrarySortOrder =
   | "title-asc"
   | "title-desc"
@@ -19,6 +21,7 @@ export const DEFAULT_LIBRARY_UI_STATE: LibraryUiState = {
 };
 
 export interface PluginData {
+  schemaVersion: number;
   settings: ForNowReaderSettings;
   libraryIndex: Record<string, BookMeta>;
   recentBooks: string[];
@@ -28,3 +31,17 @@ export interface PluginData {
   highlights: Record<string, Highlight[]>;
   libraryUiState: LibraryUiState;
 }
+
+export const CURRENT_SCHEMA_VERSION = 1;
+
+export const DEFAULT_DATA: PluginData = {
+  schemaVersion: CURRENT_SCHEMA_VERSION,
+  settings: { ...DEFAULT_SETTINGS },
+  libraryIndex: {},
+  recentBooks: [],
+  readingProgress: {},
+  favorites: {},
+  bookmarks: {},
+  highlights: {},
+  libraryUiState: { ...DEFAULT_LIBRARY_UI_STATE },
+};

@@ -3,26 +3,16 @@ import type { ReadingProgress } from "./models/types";
 
 import { Plugin, TFile, WorkspaceLeaf } from "obsidian";
 import { setLocale, t } from "./i18n";
-import { DEFAULT_LIBRARY_UI_STATE } from "./models/plugin-data";
+import { migrate } from "./models/migrations";
+import { DEFAULT_DATA } from "./models/plugin-data";
 import { LibraryIndexService } from "./services/LibraryIndexService";
 import { ReaderSessionService } from "./services/ReaderSessionService";
-import { DEFAULT_SETTINGS, ForNowReaderSettingsTab } from "./settings";
+import { ForNowReaderSettingsTab } from "./settings";
 import { LIBRARY_VIEW_TYPE, LibraryView } from "./views/LibraryView";
 import { READER_VIEW_TYPE, ReaderView } from "./views/ReaderView";
 
-const DEFAULT_DATA: PluginData = {
-  settings: { ...DEFAULT_SETTINGS },
-  libraryIndex: {},
-  recentBooks: [],
-  readingProgress: {},
-  favorites: {},
-  bookmarks: {},
-  highlights: {},
-  libraryUiState: { ...DEFAULT_LIBRARY_UI_STATE },
-};
-
 export default class ForNowReaderPlugin extends Plugin {
-  data: PluginData = { ...DEFAULT_DATA, settings: { ...DEFAULT_SETTINGS } };
+  data: PluginData = { ...DEFAULT_DATA };
   private sessionService!: ReaderSessionService;
   private libraryService!: LibraryIndexService;
   private lastActiveReaderPath: string | null = null;
@@ -142,16 +132,7 @@ export default class ForNowReaderPlugin extends Plugin {
   }
 
   async loadPluginData(): Promise<void> {
-    const saved = (await this.loadData()) as Partial<PluginData> | null;
-    this.data = {
-      ...DEFAULT_DATA,
-      ...saved,
-      settings: { ...DEFAULT_SETTINGS, ...(saved?.settings ?? {}) },
-      libraryUiState: {
-        ...DEFAULT_LIBRARY_UI_STATE,
-        ...(saved?.libraryUiState ?? {}),
-      },
-    };
+    this.data = migrate(await this.loadData());
   }
 
   async savePluginData(): Promise<void> {
