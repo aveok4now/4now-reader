@@ -1,79 +1,139 @@
 # 4now Reader
 
-Read EPUB books directly inside your Obsidian vault — no separate ebook app, no
-context switching.
+An [Obsidian](https://obsidian.md) plugin that opens EPUB books from your
+vault in a dedicated reader pane. A personal side project — I built it to
+read inside Obsidian, got through a couple of books with it, and that's
+where my motivation to keep developing it ended. It works for what it is;
+the repository is here mostly as a record of the work.
 
-> Desktop only for the initial release. Mobile support is on the roadmap.
+The plugin is not published to the Obsidian community catalog and isn't
+planned to be. Desktop Obsidian only.
 
-## Features
+Stack: TypeScript, React 19, [epub.js](https://github.com/futurepress/epub.js),
+bundled with esbuild.
 
-- Open any `.epub` file inside your vault in a dedicated reader pane.
-- Paginated and continuous-scroll reading modes.
-- Adjustable typography: font family, size, line height, paragraph spacing, text
-  width.
-- Six built-in themes that respect your Obsidian color scheme: `adaptive`,
-  `light`, `dark`, `sepia`, `cream`, `night`.
-- Auto-hiding toolbar, table of contents with a resizable side panel.
-- Reading position is restored when you reopen a book.
-- Library view of every EPUB in your vault, with recent / all / finished tabs
-  and sort controls.
-- Russian and English UI.
+## What works
 
-## Installation
+- EPUB rendering with continuous-scroll and paginated reading modes.
+- Reading position is persisted per book (EPUB CFI).
+- Typography panel: font family, size, line height, paragraph spacing,
+  text width — defaults in settings, per-book overrides in the reader.
+- Six themes (`adaptive`, `light`, `dark`, `sepia`, `cream`, `night`);
+  `adaptive` follows the active Obsidian theme.
+- Library view with recent / all / favorites tabs, search, and sort.
+- Bilingual UI (English, Russian; follows Obsidian locale by default).
 
-### From the Obsidian community plugin gallery
+## What was planned but isn't here
 
-1. Settings → Community plugins → Browse.
-2. Search for **4now Reader**.
-3. Install, then enable.
+The original scope was broader. The following were designed but never
+finished — there's no UI or persistence wired up for them, only scaffolding
+in places:
 
-### Manually (until accepted into the gallery)
+- Bookmarks and highlights.
+- Export of annotations to Markdown.
+- Additional formats (PDF, FB2, MOBI, AZW3) through a pluggable renderer.
+- Mobile support.
+- Cover thumbnails.
 
-1. Download `main.js`, `manifest.json`, and `styles.css` from the latest
-   [release](https://github.com/aveok4now/obsidian-4now-reader/releases).
-2. Copy them into `<your-vault>/.obsidian/plugins/4now-reader/`.
-3. In Obsidian: Settings → Community plugins → Reload → enable **4now Reader**.
+## Build and try it locally
 
-## Usage
-
-- Place `.epub` files anywhere inside your vault (a dedicated folder such as
-  `Books/` works well).
-- Click an EPUB in the file explorer, or open the **4now Reader: Library**
-  command and pick a book.
-- Use the toolbar to switch reading mode, change typography, jump in the table
-  of contents, or pick a theme.
-
-## Settings
-
-- Default reading mode and theme.
-- Default typography presets applied to new books.
-- Auto-hide toolbar.
-- Library scan on startup, scan root folder.
-- UI language override.
-
-Bookmarks and highlights, full mobile support, and export-to-Markdown are
-planned for the next versions.
-
-## Development
+Requires Node 18+. The committed lockfile is `pnpm-lock.yaml`, so `pnpm`
+gives the most reproducible install, but `npm` or `yarn` work equally well.
 
 ```bash
-pnpm install
-pnpm dev      # esbuild watch
-pnpm build    # typecheck + production bundle
+pnpm install   # or: npm install / yarn
+pnpm build     # or: npm run build / yarn build
 ```
 
-Symlink the project into a test vault to iterate:
+The build produces `main.js` next to the existing `manifest.json` and
+`styles.css` at the repo root. Copy those three files into
+`<your-vault>/.obsidian/plugins/4now-reader/`, then in Obsidian enable the
+plugin under **Settings → Community plugins → Installed plugins**.
+
+For iterating against a real vault, point the build at the plugin folder
+directly:
 
 ```bash
-ln -s "$PWD" "<your-test-vault>/.obsidian/plugins/4now-reader"
+OBSIDIAN_PLUGIN_DIR="<your-vault>/.obsidian/plugins/4now-reader" pnpm dev
 ```
 
-## Credits
-
-- Built on [epub.js](https://github.com/futurepress/epub.js) — BSD-2-Clause.
-- React 19 / React DOM — MIT.
-- [lucide-react](https://lucide.dev) icons — ISC.
+The dev script watches the sources and copies `main.js`, `manifest.json`,
+and `styles.css` into that folder on every rebuild. Pair it with
+[hot-reload](https://github.com/pjeby/hot-reload) in the same vault for
+automatic plugin reload.
 
 ## License
 
 MIT — see [LICENSE](./LICENSE).
+
+---
+
+# 4now Reader (по-русски)
+
+Плагин для [Obsidian](https://obsidian.md), открывающий EPUB-книги прямо
+из хранилища в отдельной панели. Личный pet-проект — собрал, чтобы читать
+внутри Obsidian, прочитал пару книг и на этом мотивация развивать дальше
+иссякла. Для своих задач работает; репозиторий лежит скорее как след о
+проделанной работе.
+
+В каталог сообщества Obsidian не публикуется и публиковаться не планируется.
+Работает только в десктопной версии Obsidian.
+
+Стек: TypeScript, React 19,
+[epub.js](https://github.com/futurepress/epub.js), сборка через esbuild.
+
+## Что работает
+
+- Рендеринг EPUB в двух режимах: прокрутка и постраничный.
+- Позиция чтения сохраняется по каждой книге (EPUB CFI).
+- Панель типографики: шрифт, размер, межстрочный интервал, отступ между
+  абзацами, ширина текста — значения по умолчанию в настройках,
+  переопределение для конкретной книги — внутри читалки.
+- Шесть тем (`adaptive`, `light`, `dark`, `sepia`, `cream`, `night`);
+  `adaptive` подстраивается под активную тему Obsidian.
+- Библиотека с вкладками «Недавние», «Все», «Избранное», поиск и сортировка.
+- Двуязычный UI (английский, русский; по умолчанию следует за локалью
+  Obsidian).
+
+## Что планировалось, но не доделано
+
+Изначальная задумка была шире. Перечисленное ниже было спроектировано, но не
+доведено до рабочего состояния — где-то остался каркас, но ни UI, ни
+сохранения нет:
+
+- Закладки и подсветки.
+- Экспорт аннотаций в Markdown.
+- Другие форматы (PDF, FB2, MOBI, AZW3) через подключаемый рендерер.
+- Поддержка мобильных.
+- Превью обложек.
+
+## Сборка и локальная проверка
+
+Нужен Node 18+. В репозиторий закоммичен `pnpm-lock.yaml`, поэтому `pnpm`
+даёт наиболее воспроизводимую установку, но `npm` и `yarn` тоже работают.
+
+```bash
+pnpm install   # или: npm install / yarn
+pnpm build     # или: npm run build / yarn build
+```
+
+Сборка кладёт `main.js` рядом с уже существующими `manifest.json` и
+`styles.css` в корне репозитория. Скопируйте эти три файла в
+`<хранилище>/.obsidian/plugins/4now-reader/` и включите плагин в Obsidian
+через **Настройки → Сторонние плагины → Установленные плагины**.
+
+Для итеративной работы против реального хранилища укажите путь до папки
+плагина:
+
+```bash
+OBSIDIAN_PLUGIN_DIR="<хранилище>/.obsidian/plugins/4now-reader" pnpm dev
+```
+
+Dev-скрипт следит за исходниками и копирует `main.js`, `manifest.json`,
+`styles.css` в указанную папку при каждой пересборке. С
+[hot-reload](https://github.com/pjeby/hot-reload) в том же хранилище плагин
+будет перезагружаться автоматически.
+
+## Лицензия
+
+MIT — см. [LICENSE](./LICENSE).
