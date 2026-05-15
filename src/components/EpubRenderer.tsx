@@ -311,7 +311,8 @@ export function EpubRenderer({
       renditionRef.current = null;
       document.removeEventListener("keydown", handleKeydown);
     };
-  }, [book]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: rendition lifecycle is tied to the book identity; settings/refs are read mutably.
+  }, [book]);
 
   // Skip initial run: localSettings is seeded from settings, so this would
   // schedule a redundant render and flicker.
@@ -335,7 +336,8 @@ export function EpubRenderer({
     settings.textWidth,
     settings.fontFamily,
     settings.toolbarAutoHide,
-  ]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only react to setting-value changes, not to setLocalSettings reference churn.
+  ]);
 
   const handleSettingsChange = useCallback(
     (partial: Partial<ForNowReaderSettings>) => {
