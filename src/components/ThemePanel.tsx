@@ -46,6 +46,6 @@ export function ThemePanel({ currentTheme, onSelect }: ThemePanelProps) {
 }
 
 function swatchStyle(theme: ReaderTheme): React.CSSProperties | undefined {
-	if (theme === "adaptive") return undefined; // styled via CSS for the gradient hint
+	if (theme === "adaptive") return undefined;
 	return { background: THEME_COLORS[theme].bg };
 }

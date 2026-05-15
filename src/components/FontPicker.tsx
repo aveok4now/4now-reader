@@ -7,13 +7,6 @@ interface FontPickerProps {
   placeholder?: string;
 }
 
-// Searchable font picker with arrow-key live preview, scoped to the parent
-// panel. Replaces AbstractInputSuggest (whose anchored positioning was being
-// pushed off-screen by the typography panel sitting at `right: 0`).
-//
-// `value` is the persisted font; `searchQuery` is the text the user typed for
-// filtering. They're kept separate so arrowing through the list doesn't
-// collapse the filter to a single match (the original `<datalist>` flaw).
 export function FontPicker({
   value,
   onChange,
@@ -80,14 +73,14 @@ export function FontPicker({
       const next =
         highlightedIndex < 0 ? 0 : (highlightedIndex + 1) % filtered.length;
       setHighlightedIndex(next);
-      onChange(filtered[next]); // live preview
+      onChange(filtered[next]);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       if (filtered.length === 0) return;
       const next =
         highlightedIndex <= 0 ? filtered.length - 1 : highlightedIndex - 1;
       setHighlightedIndex(next);
-      onChange(filtered[next]); // live preview
+      onChange(filtered[next]);
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (highlightedIndex >= 0 && highlightedIndex < filtered.length) {

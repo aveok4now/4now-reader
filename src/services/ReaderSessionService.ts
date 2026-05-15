@@ -5,17 +5,11 @@ import type { ReadingProgress } from "../models/types";
 
 export class ReaderSessionService {
 	private debounceTimer: ReturnType<typeof setTimeout> | null = null;
-	// In-memory queue of vault paths opened since the last flush. We defer the
-	// recentBooks reorder until the user re-enters the Recent tab so a click
-	// inside that tab doesn't make the row they just clicked jump to the top.
 	private pendingRecentMoves: string[] = [];
 
 	constructor(
 		private readonly plugin: Plugin,
 		private readonly data: PluginData,
-		// Fired whenever the in-memory data changes (progress, recents) — used to
-		// invalidate dependent views. Decoupled from the throttled disk save so
-		// the library can update live as the user reads.
 		private readonly onChange?: () => void,
 	) {}
 
@@ -35,15 +29,10 @@ export class ReaderSessionService {
 			vaultPath,
 			cfi,
 			percentage,
-			// Preserve the prior chapter title when the caller can't supply one
-			// (e.g. the post book.locations.generate callback fires before the
-			// reactive title resolver in the renderer has settled).
 			chapterTitle: chapterTitle ?? previous?.chapterTitle,
 			updatedAt: Date.now(),
 		};
 
-		// Fire the UI update immediately so the library reflects live progress
-		// while the user is reading; the disk save below stays debounced for IO.
 		this.onChange?.();
 
 		if (this.debounceTimer !== null) clearTimeout(this.debounceTimer);

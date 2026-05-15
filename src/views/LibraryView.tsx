@@ -170,9 +170,7 @@ function LibraryPanel({
 		data.libraryUiState.activeTab,
 	);
 
-	// Frozen order of paths in the Recent tab — only refreshed when the user
-	// enters the tab from elsewhere. Cards inside the tab still re-render live
-	// (progress %, titles); only the list ORDER stays put.
+	// Frozen list order; refreshed only on entry to the Recent tab.
 	const [recentSnapshot, setRecentSnapshot] = useState<string[]>(() => {
 		if (data.libraryUiState.activeTab === "recent") {
 			onFlushRecentReorder();

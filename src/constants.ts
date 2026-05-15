@@ -33,8 +33,6 @@ export function rangePct(value: number, range: { min: number; max: number }): nu
 	return Math.round(((value - range.min) / (range.max - range.min)) * 100);
 }
 
-// Order is the canonical display order across the settings dropdown and the
-// in-reader swatch picker.
 export const THEME_OPTIONS: ReadonlyArray<{
 	value: ReaderTheme;
 	labelKey: TranslationKey;
@@ -47,8 +45,6 @@ export const THEME_OPTIONS: ReadonlyArray<{
 	{ value: "night",    labelKey: "theme.night" },
 ];
 
-// Concrete bg/fg pairs for every theme except `adaptive`, which is resolved
-// at runtime from Obsidian's own CSS variables so it tracks the user's theme.
 export const THEME_COLORS: Record<Exclude<ReaderTheme, "adaptive">, { bg: string; fg: string }> = {
 	light: { bg: "#ffffff", fg: "#1a1a1a" },
 	dark:  { bg: "#1e1e1e", fg: "#d4d4d4" },
@@ -57,8 +53,6 @@ export const THEME_COLORS: Record<Exclude<ReaderTheme, "adaptive">, { bg: string
 	night: { bg: "#111111", fg: "#999999" },
 };
 
-// Returns concrete colors for a theme; for `adaptive` it reads the live
-// Obsidian variables.
 export function resolveThemeColors(theme: ReaderTheme): { bg: string; fg: string } {
 	if (theme === "adaptive") {
 		const styles = getComputedStyle(document.body);

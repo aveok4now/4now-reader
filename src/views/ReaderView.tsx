@@ -93,9 +93,8 @@ export class ReaderView extends ItemView {
     if (this.currentFile?.path === file.path && this.currentBook) return;
     this.openingPath = file.path;
     try {
-      // Destroy the previous book's epubjs internals before creating a new one,
-      // otherwise its in-flight section loads keep firing hooks against a torn-
-      // down rendition and surface as `injectIdentifier` undefined-packaging errors.
+      // Destroy the old book's epubjs internals so its in-flight section
+      // loads don't fire hooks against a torn-down rendition.
       const previousBook = this.currentBook;
       this.currentBook = null;
 

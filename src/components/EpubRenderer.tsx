@@ -40,7 +40,6 @@ function buildTypographyCss(s: ForNowReaderSettings): string {
     color ? `  color: ${color} !important;` : "",
     `}`,
     `p { margin-bottom: ${s.paragraphSpacing}px !important; }`,
-    // Containment for elements that commonly overflow the column.
     `img, video, svg, figure { max-width: 100% !important; height: auto !important; }`,
     `table { max-width: 100% !important; table-layout: fixed !important; word-break: break-word !important; }`,
     `pre, code { white-space: pre-wrap !important; word-break: break-all !important; max-width: 100% !important; }`,
@@ -63,8 +62,6 @@ export function EpubRenderer({
   const containerRef = useRef<HTMLDivElement>(null);
   const readerWrapRef = useRef<HTMLDivElement>(null);
   const renditionRef = useRef<Rendition | null>(null);
-  // Refs that mirror state so non-React event handlers see the latest value
-  // without forcing the rendition effect to re-register every change.
   const onProgressRef = useRef(onProgress);
   useEffect(() => {
     onProgressRef.current = onProgress;
@@ -85,11 +82,10 @@ export function EpubRenderer({
     activePanelRef.current = activePanel;
   }, [activePanel]);
 
-  // Suppress resize() calls during navigation — they blank the screen mid-flight.
+  // Skip resize() calls mid-navigation — they blank the screen.
   const isNavigatingRef = useRef(false);
 
-  // epubjs's relocated event only reports the base href; remember the full
-  // fragment so the TOC active highlight stays correct on appendix.xhtml#anchor.
+  // epubjs's relocated event drops the fragment from the href.
   const pendingTocHref = useRef<string | null>(null);
 
   const isPaginated = localSettings.readingMode === "paginated";
@@ -107,20 +103,16 @@ export function EpubRenderer({
     navItemsRef.current = navItems;
   }, [navItems]);
 
-  // `book.locations.generate` is async; until it resolves, `loc.start.percentage`
-  // is always 0. Persisting a 0% read overwrites the user's real saved progress
-  // every time the book is reopened — we gate progress writes on this flag.
+  // Pre-generate, `loc.start.percentage` is always 0; gate saves on this so
+  // we don't overwrite the real saved percentage with 0 on every open.
   const locationsReadyRef = useRef(false);
 
-  // Mirror chapterTitle into a ref so the post-generate save can read the
-  // already-resolved title without closing over stale React state.
   const chapterTitleRef = useRef<string>("");
   useEffect(() => {
     chapterTitleRef.current = chapterTitle;
   }, [chapterTitle]);
 
-  // Resolve chapter title reactively — nav items load async and onRelocated
-  // often fires before they're ready, which used to surface raw filenames.
+  // Resolve via navItems — onRelocated often fires before they've loaded.
   useEffect(() => {
     if (!currentHref || navItems.length === 0) return;
     const normalize = (h: string) =>
@@ -176,7 +168,7 @@ export function EpubRenderer({
       width: "100%",
       height: "100%",
       flow: isPaginated ? "paginated" : "scrolled-doc",
-      // Two columns only when viewport >= 2 × textWidth, else fall back to one.
+      // Two columns only when viewport >= 2 × textWidth.
       ...(isPaginated
         ? { spread: "auto", minSpreadWidth: settings.textWidth * 2 }
         : {}),
@@ -184,9 +176,8 @@ export function EpubRenderer({
 
     renditionRef.current = rendition;
 
-    // Inject via the content hook so styles land BEFORE first paint, no FOUC.
-    // Don't re-inject on `rendered` — replacing an identical stylesheet there
-    // causes a visible reflow / flash a few ms after the page appears.
+    // Content hook fires before first paint. Don't re-inject on `rendered` —
+    // replacing the same stylesheet causes a visible reflow.
     rendition.hooks.content.register((contents) => {
       contents.addStylesheetCss(
         buildTypographyCss(localSettingsRef.current),
@@ -204,7 +195,7 @@ export function EpubRenderer({
 
       const pct = loc.start.percentage ?? 0;
       const rawHref = loc.start.href ?? "";
-      // Prefer the pending fragment href so TOC matching keeps the anchor.
+      // Restore the fragment epubjs stripped (see pendingTocHref).
       const pending = pendingTocHref.current;
       pendingTocHref.current = null;
       if (
@@ -220,12 +211,8 @@ export function EpubRenderer({
       setIsLast(loc.atEnd ?? false);
       setDisplayedPage(loc.start.displayed?.page ?? 0);
       setDisplayedTotal(loc.start.displayed?.total ?? 0);
-      // Fallback title while nav items load; the reactive effect supersedes it.
       const fallbackTitle = loc.start.title ?? "";
       if (fallbackTitle) setChapterTitle(fallbackTitle);
-      // Don't persist progress until locations have been generated —
-      // otherwise pct=0 from this pre-generate relocated event would clobber
-      // the user's real saved percentage from a previous session.
       if (locationsReadyRef.current) {
         onProgressRef.current(loc.start.cfi, pct, fallbackTitle);
       }
@@ -239,9 +226,7 @@ export function EpubRenderer({
       void rendition.display();
     }
 
-    // CFI locations are required for non-zero loc.start.percentage on relocated.
-    // Once they're ready we mark the flag, persist the current location with a
-    // real percentage, and let subsequent relocated events save normally.
+    // Persist real percentage once locations land; relocated takes over after.
     void book.locations.generate(READER.CFI_GENERATION_POINTS).then(() => {
       locationsReadyRef.current = true;
       const loc = renditionRef.current?.currentLocation();
@@ -275,19 +260,16 @@ export function EpubRenderer({
       }
     };
     document.addEventListener("keydown", handleKeydown);
-    // epubjs re-emits keydown from inside its iframe via passEvents().
+    // Iframe-originated keydowns come via passEvents().
     const onIframeKeydown = (...args: unknown[]) =>
       handleKeydown(args[0] as KeyboardEvent);
     rendition.on("keydown", onIframeKeydown);
 
-    // Debounced resize: epubjs throws on resize() during transitions and ignores
-    // "100%" sizes, and clear() during navigation blanks the screen.
+    // Debounced resize: epubjs needs pixel sizes and breaks if called mid-nav.
     let pendingSize: { w: number; h: number } | null = null;
     let resizeTimer: number | null = null;
     let ro: ResizeObserver | null = null;
-    // ResizeObserver fires once on .observe() with the current size; that
-    // initial fire matches the rendition's own mount size, so propagating it
-    // would just flicker ~RESIZE_DEBOUNCE_MS after the page appears.
+    // RO's initial fire matches the mount size — skip to avoid post-paint flicker.
     let skipInitialResize = true;
     if (containerRef.current) {
       ro = new ResizeObserver((entries) => {
@@ -331,9 +313,8 @@ export function EpubRenderer({
     };
   }, [book]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Settings-tab edits arrive via the `settings` prop while a book is open.
-  // Skip the very first run — localSettings is seeded equal to settings, so the
-  // initial fire would only schedule a redundant render (the flicker).
+  // Skip initial run: localSettings is seeded from settings, so this would
+  // schedule a redundant render and flicker.
   const didMountRef = useRef(false);
   useEffect(() => {
     if (!didMountRef.current) {
@@ -362,7 +343,7 @@ export function EpubRenderer({
       const merged = { ...localSettings, ...partial };
       localSettingsRef.current = merged;
       setLocalSettings(merged);
-      // Rendition rebuild lives in ReaderView; flag the two settings that need it.
+      // readingMode and (paginated) textWidth need a fresh rendition; ReaderView handles it.
       const needsRebuild =
         "readingMode" in partial ||
         ("textWidth" in partial && localSettings.readingMode === "paginated");
@@ -384,7 +365,6 @@ export function EpubRenderer({
     }
   }, [activePanel]);
 
-  // Idle autohide; suspended while a panel is open.
   useEffect(() => {
     if (!localSettings.toolbarAutoHide) return;
     if (activePanel !== null) return;
@@ -415,7 +395,6 @@ export function EpubRenderer({
 
   return (
     <div className="fnr-reader-wrap" ref={readerWrapRef}>
-      {/* Hover-only trigger zone; pointer-events flip with toolbar visibility. */}
       {localSettings.toolbarAutoHide && (
         <div
           className={`fnr-autohide-zone${toolbarVisible ? " is-inactive" : ""}`}
@@ -506,7 +485,6 @@ export function EpubRenderer({
         </button>
       </div>
 
-      {/* Background matches theme to suppress flash before first paint. */}
       <div
         ref={containerRef}
         className="fnr-epub-container"
@@ -532,7 +510,7 @@ export function EpubRenderer({
             navItems={navItems}
             activeHref={currentHref}
             onSelect={(href) => {
-              // Try base href first — epubjs handles fragments poorly — and fall back.
+              // epubjs handles fragments poorly; try base first, fall back.
               const baseHref = href.split("#")[0];
               void renditionRef.current?.display(baseHref).catch(() => {
                 void renditionRef.current?.display(href);
