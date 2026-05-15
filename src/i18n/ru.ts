@@ -90,6 +90,9 @@ const ru: Partial<Record<TranslationKey, string>> = {
 	"settings.reset.confirmMessage": "Сбросить все настройки чтения и внешнего вида к значениям по умолчанию?",
 	"settings.reset.confirmYes": "Сбросить",
 	"settings.reset.confirmNo": "Отмена",
+	"settings.reset.tooltipAlreadyDefault": "Настройки чтения уже соответствуют значениям по умолчанию",
+	"settings.reset.alreadyDefault": "Настройки чтения уже соответствуют значениям по умолчанию",
+	"settings.reset.success": "Настройки чтения сброшены к значениям по умолчанию",
 
 	"command.openEpub": "Открыть EPUB-книгу",
 	"command.openLibrary": "Открыть библиотеку",

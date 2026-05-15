@@ -1,7 +1,11 @@
-import type { BookMeta, Bookmark, Highlight, ReadingProgress } from './types';
-import type { FourNowReaderSettings } from '../settings';
+import type { BookMeta, Bookmark, Highlight, ReadingProgress } from "./types";
+import type { ForNowReaderSettings } from "../settings";
 
-export type LibrarySortOrder = "title-asc" | "title-desc" | "author-asc" | "last-opened";
+export type LibrarySortOrder =
+  | "title-asc"
+  | "title-desc"
+  | "author-asc"
+  | "last-opened";
 export type LibraryTab = "recent" | "all" | "favorites";
 
 export interface LibraryUiState {
@@ -15,7 +19,7 @@ export const DEFAULT_LIBRARY_UI_STATE: LibraryUiState = {
 };
 
 export interface PluginData {
-  settings: FourNowReaderSettings;
+  settings: ForNowReaderSettings;
   /** vaultPath -> BookMeta */
   libraryIndex: Record<string, BookMeta>;
   /** vaultPaths, most recent first (max 20) */

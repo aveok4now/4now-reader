@@ -44,6 +44,7 @@ const en = {
 	"settings.lineHeight.desc": "Line spacing multiplier.",
 	"settings.fontFamily.name": "Font family",
 	"settings.fontFamily.desc": "Leave empty to use the book's own fonts.",
+	"settings.fontFamily.placeholder": "Book's own font",
 	"settings.paragraphSpacing.name": "Paragraph spacing",
 	"settings.paragraphSpacing.desc": "Space between paragraphs in pixels.",
 	"settings.textWidth.name": "Text width",
@@ -91,6 +92,9 @@ const en = {
 	"settings.reset.confirmMessage": "Reset all reading and appearance settings to defaults?",
 	"settings.reset.confirmYes": "Reset",
 	"settings.reset.confirmNo": "Cancel",
+	"settings.reset.tooltipAlreadyDefault": "Reading settings are already at defaults",
+	"settings.reset.alreadyDefault": "Reading settings are already at defaults",
+	"settings.reset.success": "Reading settings reset to defaults",
 
 	// Commands
 	"command.openEpub": "Open EPUB book",
