@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from "react";
+
 import { READER } from "../constants";
+import { normalizeHref } from "../utils";
 
 export interface NavItem {
 	id: string;
@@ -15,17 +17,10 @@ interface TocOverlayProps {
 	onClose: () => void;
 }
 
-function normalizeHref(h: string): string {
-	return h.split("#")[0].split("/").pop()?.toLowerCase() ?? h;
-}
-
-// Returns the raw href of the single best-matching item in the tree.
-// Depth-first: prefers the most specific (deepest) match so that when
-// a child item matches, the parent is NOT also highlighted.
+// Depth-first: deepest match wins so a parent doesn't shadow its child.
 function findBestMatch(items: NavItem[], target: string): string | undefined {
 	const normTarget = normalizeHref(target);
 	for (const item of items) {
-		// Check subitems first — a child match is more specific than a parent match
 		if (item.subitems?.length) {
 			const found = findBestMatch(item.subitems, target);
 			if (found !== undefined) return found;

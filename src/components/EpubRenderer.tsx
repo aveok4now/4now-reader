@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, Heart, Sun, Type } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { READER, TIMING, resolveThemeColors } from "../constants";
 import { t } from "../i18n";
-import { tip } from "../utils";
+import { normalizeHref, tip } from "../utils";
 import { ThemePanel } from "./ThemePanel";
 import { TocOverlay } from "./TocOverlay";
 import { TypographyPopover } from "./TypographyPopover";
@@ -120,12 +120,10 @@ export function EpubRenderer({
   // Resolve via navItems — onRelocated often fires before they've loaded.
   useEffect(() => {
     if (!currentHref || navItems.length === 0) return;
-    const normalize = (h: string) =>
-      h.split("#")[0].split("/").pop()?.toLowerCase() ?? h;
+    const target = normalizeHref(currentHref);
     function findLabel(items: NavItem[]): string | undefined {
       for (const item of items) {
-        if (normalize(item.href) === normalize(currentHref))
-          return item.label.trim();
+        if (normalizeHref(item.href) === target) return item.label.trim();
         if (item.subitems?.length) {
           const found = findLabel(item.subitems);
           if (found) return found;
@@ -203,10 +201,7 @@ export function EpubRenderer({
       // Restore the fragment epubjs stripped (see pendingTocHref).
       const pending = pendingTocHref.current;
       pendingTocHref.current = null;
-      if (
-        pending &&
-        pending.split("#")[0].split("/").pop() === rawHref.split("/").pop()
-      ) {
+      if (pending && normalizeHref(pending) === normalizeHref(rawHref)) {
         setCurrentHref(pending);
       } else {
         setCurrentHref(rawHref);

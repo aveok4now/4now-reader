@@ -1,10 +1,9 @@
 import type { SupportedLocale } from "../i18n";
-import type { TranslationKey } from "../i18n/en";
 import type ForNowReaderPlugin from "../main";
 import type { ReaderTheme, ReadingMode } from "../models/types";
 
 import { App, Modal, Notice, PluginSettingTab, Setting } from "obsidian";
-import { SLIDER_LIMITS } from "../constants";
+import { SLIDER_LIMITS, THEME_OPTIONS } from "../constants";
 import { setLocale, t } from "../i18n";
 
 export interface ForNowReaderSettings {
@@ -95,15 +94,9 @@ export class ForNowReaderSettingsTab extends PluginSettingTab {
       .setName(t("settings.theme.name"))
       .setDesc(t("settings.theme.desc"))
       .addDropdown((d) => {
-        const themes: [ReaderTheme, TranslationKey][] = [
-          ["adaptive", "theme.adaptive"],
-          ["light", "theme.light"],
-          ["dark", "theme.dark"],
-          ["sepia", "theme.sepia"],
-          ["cream", "theme.cream"],
-          ["night", "theme.night"],
-        ];
-        themes.forEach(([val, key]) => d.addOption(val, t(key)));
+        for (const { value, labelKey } of THEME_OPTIONS) {
+          d.addOption(value, t(labelKey));
+        }
         return d
           .setValue(this.plugin.data.settings.readerTheme)
           .onChange(async (v) => {
