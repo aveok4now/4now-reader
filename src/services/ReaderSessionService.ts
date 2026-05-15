@@ -9,7 +9,10 @@ export class ReaderSessionService {
 	constructor(
 		private readonly plugin: Plugin,
 		private readonly data: PluginData,
-		private readonly onSaved?: () => void,
+		// Fired whenever the in-memory data changes (progress, recents) — used to
+		// invalidate dependent views. Decoupled from the throttled disk save so
+		// the library can update live as the user reads.
+		private readonly onChange?: () => void,
 	) {}
 
 	getProgress(vaultPath: string): ReadingProgress | undefined {
@@ -23,19 +26,26 @@ export class ReaderSessionService {
 		chapterTitle?: string,
 	): void {
 		this.data.readingProgress ??= {};
+		const previous = this.data.readingProgress[vaultPath];
 		this.data.readingProgress[vaultPath] = {
 			vaultPath,
 			cfi,
 			percentage,
-			chapterTitle,
+			// Preserve the prior chapter title when the caller can't supply one
+			// (e.g. the post book.locations.generate callback fires before the
+			// reactive title resolver in the renderer has settled).
+			chapterTitle: chapterTitle ?? previous?.chapterTitle,
 			updatedAt: Date.now(),
 		};
+
+		// Fire the UI update immediately so the library reflects live progress
+		// while the user is reading; the disk save below stays debounced for IO.
+		this.onChange?.();
 
 		if (this.debounceTimer !== null) clearTimeout(this.debounceTimer);
 		this.debounceTimer = setTimeout(() => {
 			this.debounceTimer = null;
 			void this.plugin.saveData(this.data);
-			this.onSaved?.();
 		}, TIMING.SESSION_SAVE_DEBOUNCE_MS);
 	}
 
@@ -53,5 +63,6 @@ export class ReaderSessionService {
 		);
 		this.data.recentBooks = [vaultPath, ...deduped].slice(0, LIBRARY.RECENT_BOOKS_LIMIT);
 		await this.plugin.saveData(this.data);
+		this.onChange?.();
 	}
 }

@@ -16,6 +16,10 @@ export class ReaderView extends ItemView {
 	private currentFile: TFile | null = null;
 	private currentBook: Book | null = null;
 	private currentCfi: string | undefined = undefined;
+	// Obsidian fires setState twice during workspace restore / leaf reveal; this
+	// flag de-dupes the concurrent openBook calls so we don't build two epubjs
+	// instances and remount the rendition mid-flight (= the open-time flicker).
+	private openingPath: string | null = null;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -66,28 +70,48 @@ export class ReaderView extends ItemView {
 	async onClose(): Promise<void> {
 		this.root?.unmount();
 		(this.containerEl.children[0] as HTMLElement).style.removeProperty("display");
+		if (this.currentBook) {
+			try { this.currentBook.destroy(); } catch { /* partial-load races */ }
+			this.currentBook = null;
+		}
 		await this.sessionService.flush();
 	}
 
 	async openBook(file: TFile): Promise<void> {
-		this.currentFile = file;
-		this.currentTitle = file.basename;
-		this.leaf.updateHeader();
+		if (this.openingPath === file.path) return;
+		if (this.currentFile?.path === file.path && this.currentBook) return;
+		this.openingPath = file.path;
+		try {
+			// Destroy the previous book's epubjs internals before creating a new one,
+			// otherwise its in-flight section loads keep firing hooks against a torn-
+			// down rendition and surface as `injectIdentifier` undefined-packaging errors.
+			const previousBook = this.currentBook;
+			this.currentBook = null;
 
-		const arrayBuffer = await this.app.vault.readBinary(file);
-		const book = ePub(arrayBuffer);
-		this.currentBook = book;
-		await book.opened;
-		const metadata = await book.loaded.metadata;
+			this.currentFile = file;
+			this.currentTitle = file.basename;
+			this.leaf.updateHeader();
 
-		this.currentTitle = metadata.title || file.basename;
-		this.leaf.updateHeader();
+			const arrayBuffer = await this.app.vault.readBinary(file);
+			const book = ePub(arrayBuffer);
+			this.currentBook = book;
+			await book.opened;
+			if (previousBook) {
+				try { previousBook.destroy(); } catch { /* partial-load races */ }
+			}
+			const metadata = await book.loaded.metadata;
 
-		const progress = await this.loadProgress(file.path);
-		this.currentCfi = progress?.cfi;
-		this.renderEpub(book, this.currentCfi, file);
+			this.currentTitle = metadata.title || file.basename;
+			this.leaf.updateHeader();
 
-		await this.sessionService.updateRecent(file.path);
+			const progress = await this.loadProgress(file.path);
+			this.currentCfi = progress?.cfi;
+			this.renderEpub(book, this.currentCfi, file);
+
+			await this.sessionService.updateRecent(file.path);
+		} finally {
+			this.openingPath = null;
+		}
 	}
 
 	private renderEpub(book: Book, initialCfi?: string, file?: TFile): void {
@@ -100,7 +124,7 @@ export class ReaderView extends ItemView {
 			<EpubRenderer
 				key={renditionKey}
 				book={book}
-				settings={{ ...this.settings }}
+				settings={this.settings}
 				initialCfi={initialCfi}
 				onProgress={(cfi, pct, chapter) => {
 					this.currentCfi = cfi;

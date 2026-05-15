@@ -118,6 +118,16 @@ export function EpubRenderer({
 		navItemsRef.current = navItems;
 	}, [navItems]);
 
+	// `book.locations.generate` is async; until it resolves, `loc.start.percentage`
+	// is always 0. Persisting a 0% read overwrites the user's real saved progress
+	// every time the book is reopened — we gate progress writes on this flag.
+	const locationsReadyRef = useRef(false);
+
+	// Mirror chapterTitle into a ref so the post-generate save can read the
+	// already-resolved title without closing over stale React state.
+	const chapterTitleRef = useRef<string>("");
+	useEffect(() => { chapterTitleRef.current = chapterTitle; }, [chapterTitle]);
+
 	// Resolve chapter title reactively — nav items load async and onRelocated
 	// often fires before they're ready, which used to surface raw filenames.
 	useEffect(() => {
@@ -181,14 +191,12 @@ export function EpubRenderer({
 
 		renditionRef.current = rendition;
 
-		// Inject via content hook so styles land BEFORE first paint — avoids the
-		// flash of unstyled text when switching chapters. `onRendered` is a fallback.
+		// Inject via the content hook so styles land BEFORE first paint, no FOUC.
+		// Don't re-inject on `rendered` — replacing an identical stylesheet there
+		// causes a visible reflow / flash a few ms after the page appears.
 		rendition.hooks.content.register((contents) => {
 			contents.addStylesheetCss(buildTypographyCss(localSettingsRef.current), "fnr-typography");
 		});
-
-		const onRendered = () => applyTypography(rendition, localSettingsRef.current);
-		rendition.on("rendered", onRendered);
 
 		void book.loaded.navigation.then((nav) => {
 			setNavItems(nav.toc as NavItem[]);
@@ -216,7 +224,12 @@ export function EpubRenderer({
 			// Fallback title while nav items load; the reactive effect supersedes it.
 			const fallbackTitle = loc.start.title ?? "";
 			if (fallbackTitle) setChapterTitle(fallbackTitle);
-			onProgressRef.current(loc.start.cfi, pct, fallbackTitle);
+			// Don't persist progress until locations have been generated —
+			// otherwise pct=0 from this pre-generate relocated event would clobber
+			// the user's real saved percentage from a previous session.
+			if (locationsReadyRef.current) {
+				onProgressRef.current(loc.start.cfi, pct, fallbackTitle);
+			}
 		};
 
 		rendition.on("relocated", onRelocated);
@@ -228,12 +241,15 @@ export function EpubRenderer({
 		}
 
 		// CFI locations are required for non-zero loc.start.percentage on relocated.
+		// Once they're ready we mark the flag, persist the current location with a
+		// real percentage, and let subsequent relocated events save normally.
 		void book.locations.generate(READER.CFI_GENERATION_POINTS).then(() => {
+			locationsReadyRef.current = true;
 			const loc = renditionRef.current?.currentLocation();
 			if (loc?.start?.cfi) {
 				const pct = loc.start.percentage ?? 0;
 				setProgress(pct * 100);
-				onProgressRef.current(loc.start.cfi, pct);
+				onProgressRef.current(loc.start.cfi, pct, chapterTitleRef.current || undefined);
 			}
 		});
 
@@ -266,10 +282,18 @@ export function EpubRenderer({
 		let pendingSize: { w: number; h: number } | null = null;
 		let resizeTimer: number | null = null;
 		let ro: ResizeObserver | null = null;
+		// ResizeObserver fires once on .observe() with the current size; that
+		// initial fire matches the rendition's own mount size, so propagating it
+		// would just flicker ~RESIZE_DEBOUNCE_MS after the page appears.
+		let skipInitialResize = true;
 		if (containerRef.current) {
 			ro = new ResizeObserver((entries) => {
 				const entry = entries[entries.length - 1];
 				if (!entry) return;
+				if (skipInitialResize) {
+					skipInitialResize = false;
+					return;
+				}
 				pendingSize = {
 					w: entry.contentRect.width,
 					h: entry.contentRect.height,
@@ -293,7 +317,6 @@ export function EpubRenderer({
 		return () => {
 			if (resizeTimer !== null) clearTimeout(resizeTimer);
 			ro?.disconnect();
-			rendition.off("rendered", onRendered);
 			rendition.off("keydown", onIframeKeydown);
 			try {
 				rendition.destroy();
@@ -305,9 +328,16 @@ export function EpubRenderer({
 		};
 	}, [book]); // eslint-disable-line react-hooks/exhaustive-deps
 
-	// Settings tab edits arrive via the `settings` prop while a book is open.
+	// Settings-tab edits arrive via the `settings` prop while a book is open.
+	// Skip the very first run — localSettings is seeded equal to settings, so the
+	// initial fire would only schedule a redundant render (the flicker).
+	const didMountRef = useRef(false);
 	useEffect(() => {
-		const merged = { ...localSettings, ...settings };
+		if (!didMountRef.current) {
+			didMountRef.current = true;
+			return;
+		}
+		const merged = { ...localSettingsRef.current, ...settings };
 		localSettingsRef.current = merged;
 		setLocalSettings(merged);
 		const r = renditionRef.current;
