@@ -1,7 +1,8 @@
-import ePub from "epubjs";
-import { TFile, Vault } from "obsidian";
 import type { PluginData } from "../models/plugin-data";
 import type { BookMeta } from "../models/types";
+
+import ePub from "epubjs";
+import { TFile, Vault } from "obsidian";
 
 export class LibraryIndexService {
 	constructor(

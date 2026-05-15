@@ -1,12 +1,13 @@
 import type { Book, Rendition } from "epubjs";
+import type { ForNowReaderSettings } from "../settings";
+import type { NavItem } from "./TocOverlay";
+
 import { ChevronLeft, ChevronRight, Heart, Sun, Type } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { READER, TIMING, resolveThemeColors } from "../constants";
 import { t } from "../i18n";
-import type { ForNowReaderSettings } from "../settings";
 import { tip } from "../utils";
 import { ThemePanel } from "./ThemePanel";
-import type { NavItem } from "./TocOverlay";
 import { TocOverlay } from "./TocOverlay";
 import { TypographyPopover } from "./TypographyPopover";
 

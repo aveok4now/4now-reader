@@ -1,6 +1,8 @@
-import { moment } from 'obsidian';
-import en, { type TranslationKey } from './en';
-import ru from './ru';
+import type { TranslationKey } from "./en";
+
+import { moment } from "obsidian";
+import en from "./en";
+import ru from "./ru";
 
 export type SupportedLocale = 'auto' | 'en' | 'ru';
 

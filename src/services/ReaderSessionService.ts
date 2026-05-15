@@ -1,7 +1,8 @@
-import { Plugin } from "obsidian";
-import { LIBRARY, TIMING } from "../constants";
 import type { PluginData } from "../models/plugin-data";
 import type { ReadingProgress } from "../models/types";
+
+import { Plugin } from "obsidian";
+import { LIBRARY, TIMING } from "../constants";
 
 export class ReaderSessionService {
 	private debounceTimer: ReturnType<typeof setTimeout> | null = null;

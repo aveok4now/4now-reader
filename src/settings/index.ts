@@ -1,9 +1,11 @@
-import { App, Modal, Notice, PluginSettingTab, Setting } from "obsidian";
-import { SLIDER_LIMITS } from "../constants";
-import { setLocale, t, type SupportedLocale } from "../i18n";
+import type { SupportedLocale } from "../i18n";
 import type { TranslationKey } from "../i18n/en";
 import type ForNowReaderPlugin from "../main";
 import type { ReaderTheme, ReadingMode } from "../models/types";
+
+import { App, Modal, Notice, PluginSettingTab, Setting } from "obsidian";
+import { SLIDER_LIMITS } from "../constants";
+import { setLocale, t } from "../i18n";
 
 export interface ForNowReaderSettings {
   readingMode: ReadingMode;

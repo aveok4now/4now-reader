@@ -1,10 +1,4 @@
-import { ArrowUpDown, BookOpen, Clock, Heart } from "lucide-react";
-import { ItemView, Menu, WorkspaceLeaf } from "obsidian";
 import type React from "react";
-import { useState } from "react";
-import { createRoot } from "react-dom/client";
-import { t } from "../i18n";
-import { formatDateShort, tip } from "../utils";
 import type {
 	LibrarySortOrder,
 	LibraryTab,
@@ -12,6 +6,13 @@ import type {
 	PluginData,
 } from "../models/plugin-data";
 import type { BookMeta, ReadingProgress } from "../models/types";
+
+import { ArrowUpDown, BookOpen, Clock, Heart } from "lucide-react";
+import { ItemView, Menu, WorkspaceLeaf } from "obsidian";
+import { useState } from "react";
+import { createRoot } from "react-dom/client";
+import { t } from "../i18n";
+import { formatDateShort, tip } from "../utils";
 
 export const LIBRARY_VIEW_TYPE = "4now-reader-library";
 

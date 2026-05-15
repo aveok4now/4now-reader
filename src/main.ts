@@ -1,10 +1,9 @@
+import type { PluginData } from "./models/plugin-data";
+import type { ReadingProgress } from "./models/types";
+
 import { Plugin, TFile, WorkspaceLeaf } from "obsidian";
 import { setLocale, t } from "./i18n";
-import {
-  DEFAULT_LIBRARY_UI_STATE,
-  type PluginData,
-} from "./models/plugin-data";
-import type { ReadingProgress } from "./models/types";
+import { DEFAULT_LIBRARY_UI_STATE } from "./models/plugin-data";
 import { LibraryIndexService } from "./services/LibraryIndexService";
 import { ReaderSessionService } from "./services/ReaderSessionService";
 import { DEFAULT_SETTINGS, ForNowReaderSettingsTab } from "./settings";

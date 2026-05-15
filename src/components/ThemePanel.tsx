@@ -1,7 +1,8 @@
 import type { KeyboardEvent } from "react";
+import type { ReaderTheme } from "../models/types";
+
 import { THEME_OPTIONS, THEME_COLORS } from "../constants";
 import { t } from "../i18n";
-import type { ReaderTheme } from "../models/types";
 import { tip } from "../utils";
 
 interface ThemePanelProps {
