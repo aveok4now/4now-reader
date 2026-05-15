@@ -20,15 +20,11 @@ export const DEFAULT_LIBRARY_UI_STATE: LibraryUiState = {
 
 export interface PluginData {
   settings: ForNowReaderSettings;
-  /** vaultPath -> BookMeta */
   libraryIndex: Record<string, BookMeta>;
-  /** vaultPaths, most recent first (max 20) */
   recentBooks: string[];
-  /** vaultPath -> ReadingProgress */
   readingProgress: Record<string, ReadingProgress>;
-  /** vaultPath -> Bookmark[] */
+  favorites: Record<string, true>;
   bookmarks: Record<string, Bookmark[]>;
-  /** vaultPath -> Highlight[] */
   highlights: Record<string, Highlight[]>;
   libraryUiState: LibraryUiState;
 }

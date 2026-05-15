@@ -16,6 +16,7 @@ const DEFAULT_DATA: PluginData = {
   libraryIndex: {},
   recentBooks: [],
   readingProgress: {},
+  favorites: {},
   bookmarks: {},
   highlights: {},
   libraryUiState: { ...DEFAULT_LIBRARY_UI_STATE },
@@ -49,6 +50,8 @@ export default class ForNowReaderPlugin extends Plugin {
           this.data.settings,
           (vaultPath) => this.getProgress(vaultPath),
           () => this.savePluginData(),
+          (vaultPath) => this.isFavorite(vaultPath),
+          (vaultPath) => this.toggleFavorite(vaultPath),
         ),
     );
 
@@ -61,6 +64,7 @@ export default class ForNowReaderPlugin extends Plugin {
           (vaultPath, newTab) => this.openEpubByPath(vaultPath, newTab),
           () => this.savePluginData(),
           () => this.sessionService.flushRecentReorder(),
+          (vaultPath) => this.toggleFavorite(vaultPath),
         ),
     );
 
@@ -238,5 +242,29 @@ export default class ForNowReaderPlugin extends Plugin {
 
   private getProgress(vaultPath: string): Promise<ReadingProgress | undefined> {
     return Promise.resolve(this.data.readingProgress?.[vaultPath]);
+  }
+
+  isFavorite(vaultPath: string): boolean {
+    return this.data.favorites?.[vaultPath] === true;
+  }
+
+  toggleFavorite(vaultPath: string): void {
+    this.data.favorites ??= {};
+    if (this.data.favorites[vaultPath]) {
+      delete this.data.favorites[vaultPath];
+    } else {
+      this.data.favorites[vaultPath] = true;
+    }
+    void this.savePluginData();
+    this.invalidateLibraryView();
+    this.propagateFavoriteToViews(vaultPath);
+  }
+
+  private propagateFavoriteToViews(vaultPath: string): void {
+    for (const leaf of this.app.workspace.getLeavesOfType(READER_VIEW_TYPE)) {
+      if (leaf.view instanceof ReaderView) {
+        leaf.view.refreshFavoriteFor(vaultPath);
+      }
+    }
   }
 }

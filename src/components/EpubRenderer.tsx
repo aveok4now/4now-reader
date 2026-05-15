@@ -1,5 +1,5 @@
 import type { Book, Rendition } from "epubjs";
-import { ChevronLeft, ChevronRight, Sun, Type } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart, Sun, Type } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { READER, TIMING, resolveThemeColors } from "../constants";
 import { t } from "../i18n";
@@ -14,6 +14,8 @@ interface EpubRendererProps {
   book: Book;
   settings: ForNowReaderSettings;
   initialCfi?: string;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
   onProgress: (cfi: string, pct: number, chapterTitle?: string) => void;
   onSettingsChange: (
     partial: Partial<ForNowReaderSettings>,
@@ -56,6 +58,8 @@ export function EpubRenderer({
   book,
   settings,
   initialCfi,
+  isFavorite,
+  onToggleFavorite,
   onProgress,
   onSettingsChange,
 }: EpubRendererProps) {
@@ -482,6 +486,22 @@ export function EpubRenderer({
           }
         >
           <Sun size={16} />
+        </button>
+
+        <button
+          className={`fnr-toolbar-btn fnr-favorite-btn${isFavorite ? " is-favorited" : ""}`}
+          ref={
+            tip(
+              t(
+                isFavorite
+                  ? "library.favorites.tooltip.remove"
+                  : "library.favorites.tooltip.add",
+              ),
+            ) as React.Ref<HTMLButtonElement>
+          }
+          onClick={onToggleFavorite}
+        >
+          <Heart size={16} fill={isFavorite ? "currentColor" : "none"} />
         </button>
       </div>
 

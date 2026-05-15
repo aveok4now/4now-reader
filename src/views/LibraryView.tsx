@@ -100,11 +100,21 @@ interface BookCardProps {
 	book: BookMeta;
 	progress?: ReadingProgress;
 	isActive: boolean;
+	isFavorite: boolean;
 	onClick: () => void;
 	onNewTabClick: () => void;
+	onToggleFavorite: () => void;
 }
 
-function BookCard({ book, progress, isActive, onClick, onNewTabClick }: BookCardProps) {
+function BookCard({
+	book,
+	progress,
+	isActive,
+	isFavorite,
+	onClick,
+	onNewTabClick,
+	onToggleFavorite,
+}: BookCardProps) {
 	const pct = progress ? Math.round(progress.percentage * 100) : 0;
 	const lastOpened = book.lastOpened ? formatDateShort(book.lastOpened) : null;
 
@@ -126,6 +136,23 @@ function BookCard({ book, progress, isActive, onClick, onNewTabClick }: BookCard
 			tabIndex={0}
 			onKeyDown={(e) => e.key === "Enter" && onClick()}
 		>
+			<button
+				type="button"
+				className={`fnr-book-card-favorite${isFavorite ? " is-favorited" : ""}`}
+				ref={tip(
+					t(
+						isFavorite
+							? "library.favorites.tooltip.remove"
+							: "library.favorites.tooltip.add",
+					),
+				)}
+				onClick={(e) => {
+					e.stopPropagation();
+					onToggleFavorite();
+				}}
+			>
+				<Heart size={14} fill={isFavorite ? "currentColor" : "none"} />
+			</button>
 			<div className="fnr-book-card-info">
 				<div className="fnr-book-card-title">{book.title || book.vaultPath}</div>
 				{book.author && (
@@ -152,6 +179,7 @@ interface LibraryPanelProps {
 	onOpenBookNewTab: (vaultPath: string) => void;
 	onUiStateChange: (changes: Partial<LibraryUiState>) => void;
 	onFlushRecentReorder: () => void;
+	onToggleFavorite: (vaultPath: string) => void;
 }
 
 function LibraryPanel({
@@ -161,6 +189,7 @@ function LibraryPanel({
 	onOpenBookNewTab,
 	onUiStateChange,
 	onFlushRecentReorder,
+	onToggleFavorite,
 }: LibraryPanelProps) {
 	const [query, setQuery] = useState("");
 	const [sortOrder, setSortOrder] = useState<LibrarySortOrder>(
@@ -208,28 +237,41 @@ function LibraryPanel({
 		: sortBooks(books, sortOrder);
 
 	const renderContent = () => {
+		const cardFor = (b: BookMeta) => (
+			<BookCard
+				key={b.vaultPath}
+				book={b}
+				progress={data.readingProgress[b.vaultPath]}
+				isActive={b.vaultPath === activeVaultPath}
+				isFavorite={data.favorites?.[b.vaultPath] === true}
+				onClick={() => onOpenBook(b.vaultPath)}
+				onNewTabClick={() => onOpenBookNewTab(b.vaultPath)}
+				onToggleFavorite={() => onToggleFavorite(b.vaultPath)}
+			/>
+		);
+
 		if (activeTab === "recent") {
 			if (recentBooks.length === 0) {
 				return (
 					<div className="fnr-library-empty">{t("library.recent.empty")}</div>
 				);
 			}
-			return recentBooks.map((b) => (
-				<BookCard
-					key={b.vaultPath}
-					book={b}
-					progress={data.readingProgress[b.vaultPath]}
-					isActive={b.vaultPath === activeVaultPath}
-					onClick={() => onOpenBook(b.vaultPath)}
-					onNewTabClick={() => onOpenBookNewTab(b.vaultPath)}
-				/>
-			));
+			return recentBooks.map(cardFor);
 		}
 
 		if (activeTab === "favorites") {
-			return (
-				<div className="fnr-library-empty">{t("library.favorites.empty")}</div>
+			const favBooks = sortBooks(
+				Object.keys(data.favorites ?? {})
+					.map((p) => data.libraryIndex[p])
+					.filter((b): b is BookMeta => b !== undefined),
+				sortOrder,
 			);
+			if (favBooks.length === 0) {
+				return (
+					<div className="fnr-library-empty">{t("library.favorites.empty")}</div>
+				);
+			}
+			return favBooks.map(cardFor);
 		}
 
 		if (filteredAll.length === 0) {
@@ -239,16 +281,7 @@ function LibraryPanel({
 				</div>
 			);
 		}
-		return filteredAll.map((b) => (
-			<BookCard
-				key={b.vaultPath}
-				book={b}
-				progress={data.readingProgress[b.vaultPath]}
-				isActive={b.vaultPath === activeVaultPath}
-				onClick={() => onOpenBook(b.vaultPath)}
-					onNewTabClick={() => onOpenBookNewTab(b.vaultPath)}
-			/>
-		));
+		return filteredAll.map(cardFor);
 	};
 
 	return (
@@ -285,6 +318,7 @@ export class LibraryView extends ItemView {
 		private readonly openBook: (vaultPath: string, newTab?: boolean) => Promise<void>,
 		private readonly persist: () => Promise<void>,
 		private readonly flushRecentReorder: () => void,
+		private readonly toggleFavorite: (vaultPath: string) => void,
 	) {
 		super(leaf);
 	}
@@ -329,6 +363,7 @@ export class LibraryView extends ItemView {
 					void this.persist();
 				}}
 				onFlushRecentReorder={this.flushRecentReorder}
+				onToggleFavorite={this.toggleFavorite}
 			/>,
 		);
 	}

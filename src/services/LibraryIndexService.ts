@@ -41,6 +41,7 @@ export class LibraryIndexService {
 
 	removeFile(vaultPath: string): void {
 		delete this.data.libraryIndex[vaultPath];
+		if (this.data.favorites) delete this.data.favorites[vaultPath];
 	}
 
 	renameFile(oldPath: string, newPath: string, newFile: TFile): void {

@@ -17,7 +17,7 @@ context switching.
 - Reading position is restored when you reopen a book.
 - Library view of every EPUB in your vault, with recent / all / finished tabs
   and sort controls.
-- Russian and English UI (Obsidian's `moment.locale` drives the choice).
+- Russian and English UI.
 
 ## Installation
 
@@ -52,7 +52,7 @@ context switching.
 - UI language override.
 
 Bookmarks and highlights, full mobile support, and export-to-Markdown are
-planned for the next versions — see the issue tracker for the full backlog.
+planned for the next versions.
 
 ## Development
 

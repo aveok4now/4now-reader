@@ -28,8 +28,16 @@ export class ReaderView extends ItemView {
       vaultPath: string,
     ) => Promise<ReadingProgress | undefined>,
     private saveSettings: () => Promise<void>,
+    private isFavorite: (vaultPath: string) => boolean,
+    private toggleFavorite: (vaultPath: string) => void,
   ) {
     super(leaf);
+  }
+
+  refreshFavoriteFor(vaultPath: string): void {
+    if (this.currentFile?.path === vaultPath && this.currentBook) {
+      this.renderEpub(this.currentBook, this.currentCfi, this.currentFile);
+    }
   }
 
   getViewType(): string {
@@ -139,6 +147,8 @@ export class ReaderView extends ItemView {
           book={book}
           settings={this.settings}
           initialCfi={initialCfi}
+          isFavorite={this.isFavorite(f.path)}
+          onToggleFavorite={() => this.toggleFavorite(f.path)}
           onProgress={(cfi, pct, chapter) => {
             this.currentCfi = cfi;
             this.sessionService.recordProgress(f.path, cfi, pct, chapter);

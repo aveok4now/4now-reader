@@ -83,6 +83,8 @@ const ru: Partial<Record<TranslationKey, string>> = {
 	"library.tabs.favorites": "Избранные",
 	"library.recent.empty": "Ещё не открывали книги",
 	"library.favorites.empty": "Нет избранных книг",
+	"library.favorites.tooltip.add": "Добавить в избранное",
+	"library.favorites.tooltip.remove": "Убрать из избранного",
 
 	// Settings reset
 	"settings.reset.tooltip": "Сбросить к значению по умолчанию",

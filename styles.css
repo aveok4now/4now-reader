@@ -228,6 +228,7 @@
 /* Book card */
 
 .fnr-book-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -236,6 +237,43 @@
   border-radius: var(--radius-s);
   margin: 1px 4px;
   transition: background 0.1s ease;
+}
+
+.fnr-book-card-favorite {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 120ms ease,
+    color 120ms ease;
+}
+
+.fnr-book-card:hover .fnr-book-card-favorite,
+.fnr-book-card-favorite.is-favorited {
+  opacity: 1;
+}
+
+.fnr-book-card-favorite.is-favorited {
+  color: var(--interactive-accent);
+}
+
+.fnr-book-card-favorite:hover {
+  color: var(--interactive-accent);
+}
+
+.fnr-favorite-btn.is-favorited {
+  color: var(--interactive-accent);
 }
 
 .fnr-book-card:hover {

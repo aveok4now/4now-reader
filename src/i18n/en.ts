@@ -85,6 +85,8 @@ const en = {
 	"library.tabs.favorites": "Favorites",
 	"library.recent.empty": "No books opened yet",
 	"library.favorites.empty": "No favorites yet",
+	"library.favorites.tooltip.add": "Add to favorites",
+	"library.favorites.tooltip.remove": "Remove from favorites",
 
 	// Settings reset
 	"settings.reset.tooltip": "Reset to default",
