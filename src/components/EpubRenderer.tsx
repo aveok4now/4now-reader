@@ -1,17 +1,15 @@
-import type { Book, Rendition } from "epubjs";
+import type { Book } from "epubjs";
 import type { ForNowReaderSettings } from "../settings";
-import type { NavItem } from "./TocOverlay";
 
 import { ChevronLeft, ChevronRight, Heart, Sun, Type } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { READER, TIMING, resolveThemeColors } from "../constants";
+
+import { TIMING, resolveThemeColors } from "../constants";
 import { t } from "../i18n";
-import {
-  applyTypography,
-  buildTypographyCss,
-  TYPOGRAPHY_STYLESHEET_KEY,
-} from "../renderer/typography";
-import { normalizeHref, tip } from "../utils";
+import { READER } from "../constants";
+import { tip } from "../utils";
+
+import { useEpubRendition } from "./reader/useEpubRendition";
 import { ThemePanel } from "./ThemePanel";
 import { TocOverlay } from "./TocOverlay";
 import { TypographyPopover } from "./TypographyPopover";
@@ -39,11 +37,6 @@ export function EpubRenderer({
 }: EpubRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const readerWrapRef = useRef<HTMLDivElement>(null);
-  const renditionRef = useRef<Rendition | null>(null);
-  const onProgressRef = useRef(onProgress);
-  useEffect(() => {
-    onProgressRef.current = onProgress;
-  });
 
   const [localSettings, setLocalSettings] =
     useState<ForNowReaderSettings>(settings);
@@ -55,60 +48,33 @@ export function EpubRenderer({
   const [activePanel, setActivePanel] = useState<
     "toc" | "typography" | "theme" | null
   >(null);
-  const activePanelRef = useRef<"toc" | "typography" | "theme" | null>(null);
+  const activePanelRef = useRef<typeof activePanel>(null);
   useEffect(() => {
     activePanelRef.current = activePanel;
   }, [activePanel]);
 
-  // Skip resize() calls mid-navigation — they blank the screen.
-  const isNavigatingRef = useRef(false);
-
-  // epubjs's relocated event drops the fragment from the href.
-  const pendingTocHref = useRef<string | null>(null);
-
   const isPaginated = localSettings.readingMode === "paginated";
 
-  const [progress, setProgress] = useState(0);
-  const [isFirst, setIsFirst] = useState(false);
-  const [isLast, setIsLast] = useState(false);
-  const [chapterTitle, setChapterTitle] = useState("");
-  const [currentHref, setCurrentHref] = useState("");
-  const [displayedPage, setDisplayedPage] = useState(0);
-  const [displayedTotal, setDisplayedTotal] = useState(0);
-  const [navItems, setNavItems] = useState<NavItem[]>([]);
-  const navItemsRef = useRef<NavItem[]>([]);
-  useEffect(() => {
-    navItemsRef.current = navItems;
-  }, [navItems]);
+  const { state, controller } = useEpubRendition({
+    book,
+    containerRef,
+    isPaginated,
+    initialSettings: settings,
+    settingsRef: localSettingsRef,
+    initialCfi,
+    onProgress,
+  });
+  const {
+    progress,
+    isFirst,
+    isLast,
+    chapterTitle,
+    currentHref,
+    displayedPage,
+    displayedTotal,
+    navItems,
+  } = state;
 
-  // Pre-generate, `loc.start.percentage` is always 0; gate saves on this so
-  // we don't overwrite the real saved percentage with 0 on every open.
-  const locationsReadyRef = useRef(false);
-
-  const chapterTitleRef = useRef<string>("");
-  useEffect(() => {
-    chapterTitleRef.current = chapterTitle;
-  }, [chapterTitle]);
-
-  // Resolve via navItems — onRelocated often fires before they've loaded.
-  useEffect(() => {
-    if (!currentHref || navItems.length === 0) return;
-    const target = normalizeHref(currentHref);
-    function findLabel(items: NavItem[]): string | undefined {
-      for (const item of items) {
-        if (normalizeHref(item.href) === target) return item.label.trim();
-        if (item.subitems?.length) {
-          const found = findLabel(item.subitems);
-          if (found) return found;
-        }
-      }
-      return undefined;
-    }
-    const label = findLabel(navItems);
-    if (label) setChapterTitle(label);
-  }, [currentHref, navItems]);
-
-  // null = use the CSS default width.
   const [tocWidth, setTocWidth] = useState<number | null>(null);
 
   const handleTocResizeStart = useCallback((e: React.MouseEvent) => {
@@ -137,155 +103,14 @@ export function EpubRenderer({
   const [toolbarVisible, setToolbarVisible] = useState(true);
   const hideTimerRef = useRef<number | null>(null);
 
+  // Esc closes any open overlay panel.
   useEffect(() => {
-    if (!containerRef.current) return;
-
-    const rendition: Rendition = book.renderTo(containerRef.current, {
-      width: "100%",
-      height: "100%",
-      flow: isPaginated ? "paginated" : "scrolled-doc",
-      // Two columns only when viewport >= 2 × textWidth.
-      ...(isPaginated
-        ? { spread: "auto", minSpreadWidth: settings.textWidth * 2 }
-        : {}),
-    });
-
-    renditionRef.current = rendition;
-
-    // Content hook fires before first paint. Don't re-inject on `rendered` —
-    // replacing the same stylesheet causes a visible reflow.
-    rendition.hooks.content.register((contents) => {
-      contents.addStylesheetCss(
-        buildTypographyCss(localSettingsRef.current),
-        TYPOGRAPHY_STYLESHEET_KEY,
-      );
-    });
-
-    void book.loaded.navigation.then((nav) => {
-      setNavItems(nav.toc as NavItem[]);
-    });
-
-    const onRelocated = (location: unknown) => {
-      const loc = location as import("epubjs").EpubLocation;
-      isNavigatingRef.current = false;
-
-      const pct = loc.start.percentage ?? 0;
-      const rawHref = loc.start.href ?? "";
-      // Restore the fragment epubjs stripped (see pendingTocHref).
-      const pending = pendingTocHref.current;
-      pendingTocHref.current = null;
-      if (pending && normalizeHref(pending) === normalizeHref(rawHref)) {
-        setCurrentHref(pending);
-      } else {
-        setCurrentHref(rawHref);
-      }
-      setProgress(pct * 100);
-      setIsFirst(loc.atStart ?? false);
-      setIsLast(loc.atEnd ?? false);
-      setDisplayedPage(loc.start.displayed?.page ?? 0);
-      setDisplayedTotal(loc.start.displayed?.total ?? 0);
-      const fallbackTitle = loc.start.title ?? "";
-      if (fallbackTitle) setChapterTitle(fallbackTitle);
-      if (locationsReadyRef.current) {
-        onProgressRef.current(loc.start.cfi, pct, fallbackTitle);
-      }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setActivePanel(null);
     };
-
-    rendition.on("relocated", onRelocated);
-
-    if (initialCfi) {
-      void rendition.display(initialCfi);
-    } else {
-      void rendition.display();
-    }
-
-    // Persist real percentage once locations land; relocated takes over after.
-    void book.locations.generate(READER.CFI_GENERATION_POINTS).then(() => {
-      locationsReadyRef.current = true;
-      const loc = renditionRef.current?.currentLocation();
-      if (loc?.start?.cfi) {
-        const pct = loc.start.percentage ?? 0;
-        setProgress(pct * 100);
-        onProgressRef.current(
-          loc.start.cfi,
-          pct,
-          chapterTitleRef.current || undefined,
-        );
-      }
-    });
-
-    const handleKeydown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setActivePanel(null);
-        return;
-      }
-      const target = e.target as HTMLElement;
-      const isInput =
-        target.tagName === "INPUT" || target.tagName === "TEXTAREA";
-      if (!isInput && activePanelRef.current === null) {
-        if (e.key === "ArrowLeft") {
-          isNavigatingRef.current = true;
-          void renditionRef.current?.prev();
-        } else if (e.key === "ArrowRight") {
-          isNavigatingRef.current = true;
-          void renditionRef.current?.next();
-        }
-      }
-    };
-    document.addEventListener("keydown", handleKeydown);
-    // Iframe-originated keydowns come via passEvents().
-    const onIframeKeydown = (...args: unknown[]) =>
-      handleKeydown(args[0] as KeyboardEvent);
-    rendition.on("keydown", onIframeKeydown);
-
-    // Debounced resize: epubjs needs pixel sizes and breaks if called mid-nav.
-    let pendingSize: { w: number; h: number } | null = null;
-    let resizeTimer: number | null = null;
-    let ro: ResizeObserver | null = null;
-    // RO's initial fire matches the mount size — skip to avoid post-paint flicker.
-    let skipInitialResize = true;
-    if (containerRef.current) {
-      ro = new ResizeObserver((entries) => {
-        const entry = entries[entries.length - 1];
-        if (!entry) return;
-        if (skipInitialResize) {
-          skipInitialResize = false;
-          return;
-        }
-        pendingSize = {
-          w: entry.contentRect.width,
-          h: entry.contentRect.height,
-        };
-        if (resizeTimer !== null) clearTimeout(resizeTimer);
-        resizeTimer = window.setTimeout(() => {
-          if (pendingSize && !isNavigatingRef.current && renditionRef.current) {
-            try {
-              renditionRef.current.resize(pendingSize.w, pendingSize.h);
-            } catch {
-              /* rendition partially destroyed during cleanup */
-            }
-            pendingSize = null;
-          }
-          resizeTimer = null;
-        }, TIMING.RESIZE_DEBOUNCE_MS);
-      });
-      ro.observe(containerRef.current);
-    }
-
-    return () => {
-      if (resizeTimer !== null) clearTimeout(resizeTimer);
-      ro?.disconnect();
-      rendition.off("keydown", onIframeKeydown);
-      try {
-        rendition.destroy();
-      } catch {
-        /* partially-initialized rendition */
-      }
-      renditionRef.current = null;
-      document.removeEventListener("keydown", handleKeydown);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: rendition lifecycle is tied to the book identity; settings/refs are read mutably.
-  }, [book]);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
 
   // Skip initial run: localSettings is seeded from settings, so this would
   // schedule a redundant render and flicker.
@@ -298,9 +123,7 @@ export function EpubRenderer({
     const merged = { ...localSettingsRef.current, ...settings };
     localSettingsRef.current = merged;
     setLocalSettings(merged);
-    const r = renditionRef.current;
-    if (!r) return;
-    applyTypography(r, merged);
+    controller.applySettings(merged);
   }, [
     settings.readerTheme,
     settings.fontSize,
@@ -309,7 +132,7 @@ export function EpubRenderer({
     settings.textWidth,
     settings.fontFamily,
     settings.toolbarAutoHide,
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only react to setting-value changes, not to setLocalSettings reference churn.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only react to setting-value changes, not controller reference churn.
   ]);
 
   const handleSettingsChange = useCallback(
@@ -323,11 +146,9 @@ export function EpubRenderer({
         "readingMode" in partial ||
         ("textWidth" in partial && localSettings.readingMode === "paginated");
       if (needsRebuild) return;
-      const r = renditionRef.current;
-      if (!r) return;
-      applyTypography(r, merged);
+      controller.applySettings(merged);
     },
-    [onSettingsChange, localSettings],
+    [onSettingsChange, localSettings, controller],
   );
 
   useEffect(() => {
@@ -394,10 +215,7 @@ export function EpubRenderer({
               ),
             ) as React.Ref<HTMLButtonElement>
           }
-          onClick={() => {
-            isNavigatingRef.current = true;
-            renditionRef.current?.prev();
-          }}
+          onClick={controller.prev}
         >
           <ChevronLeft size={16} />
         </button>
@@ -431,10 +249,7 @@ export function EpubRenderer({
               ),
             ) as React.Ref<HTMLButtonElement>
           }
-          onClick={() => {
-            isNavigatingRef.current = true;
-            renditionRef.current?.next();
-          }}
+          onClick={controller.next}
         >
           <ChevronRight size={16} />
         </button>
@@ -501,11 +316,7 @@ export function EpubRenderer({
             navItems={navItems}
             activeHref={currentHref}
             onSelect={(href) => {
-              // epubjs handles fragments poorly; try base first, fall back.
-              const baseHref = href.split("#")[0];
-              void renditionRef.current?.display(baseHref).catch(() => {
-                void renditionRef.current?.display(href);
-              });
+              controller.displayHref(href);
               setActivePanel(null);
             }}
             onClose={() => setActivePanel(null)}
