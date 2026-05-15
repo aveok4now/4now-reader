@@ -316,7 +316,7 @@
 	z-index: 10;
 	border-bottom: none;
 	background: var(--background-primary);
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+	box-shadow: var(--shadow-s);
 	opacity: 0;
 	pointer-events: none;
 	transition: opacity 0.2s;
@@ -365,7 +365,8 @@
 	position: absolute;
 	top: var(--fnr-toolbar-height, 36px);
 	z-index: 11;
-	background: var(--background-primary);
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-m);
 	box-shadow: var(--shadow-l);
 	overflow: hidden;
@@ -381,18 +382,29 @@
 	max-height: calc(100% - var(--fnr-toolbar-height, 36px));
 	overflow-y: auto;
 	position: absolute;
+	border-radius: 0 var(--radius-m) var(--radius-m) 0;
+	/* Right edge butts up against the book content; lean on the border + shadow
+	   from .fnr-overlay-panel for separation on light AND dark themes. */
 }
 
-/* Custom resize handle — full-height strip on the right edge of the TOC panel */
+/* Custom resize handle — full-height strip on the right edge of the TOC panel.
+   Subtle by default, accent on hover so it's obvious it's draggable. */
 
 .fnr-toc-resize-handle {
 	position: absolute;
 	top: 0;
 	right: 0;
-	width: 0.4em;
+	width: 4px;
 	height: 100%;
 	cursor: col-resize;
 	z-index: 1;
+	background: transparent;
+	transition: background 120ms ease;
+}
+
+.fnr-toc-resize-handle:hover,
+.fnr-toc-resize-handle:active {
+	background: var(--interactive-accent);
 }
 
 .fnr-toc-item {
