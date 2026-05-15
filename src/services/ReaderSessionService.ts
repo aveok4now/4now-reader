@@ -1,7 +1,7 @@
 import type { PluginData } from "../models/plugin-data";
 import type { ReadingProgress } from "../models/types";
+import type { Plugin } from "obsidian";
 
-import { Plugin } from "obsidian";
 import { LIBRARY, TIMING } from "../constants";
 
 export class ReaderSessionService {

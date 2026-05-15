@@ -37,7 +37,9 @@ export class LibraryIndexService {
 				author: meta.creator || "",
 				lastOpened: existing?.lastOpened,
 			};
-		} catch {}
+		} catch (err) {
+			console.error(`[4now] failed to scan ${file.path}:`, err);
+		}
 	}
 
 	removeFile(vaultPath: string): void {
