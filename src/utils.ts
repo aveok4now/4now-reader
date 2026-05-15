@@ -18,3 +18,17 @@ export function formatDateShort(timestamp: number): string {
 export function normalizeHref(href: string): string {
 	return href.split("#")[0].split("/").pop()?.toLowerCase() ?? href;
 }
+
+export function debounce<Args extends unknown[]>(
+	fn: (...args: Args) => void,
+	ms: number,
+): (...args: Args) => void {
+	let timer: ReturnType<typeof setTimeout> | null = null;
+	return (...args: Args) => {
+		if (timer !== null) clearTimeout(timer);
+		timer = setTimeout(() => {
+			timer = null;
+			fn(...args);
+		}, ms);
+	};
+}

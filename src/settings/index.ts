@@ -3,8 +3,9 @@ import type ForNowReaderPlugin from "../main";
 import type { ReaderTheme, ReadingMode } from "../models/types";
 
 import { App, Modal, Notice, PluginSettingTab, Setting } from "obsidian";
-import { SLIDER_LIMITS, THEME_OPTIONS } from "../constants";
+import { SLIDER_LIMITS, THEME_OPTIONS, TIMING } from "../constants";
 import { setLocale, t } from "../i18n";
+import { debounce } from "../utils";
 
 export interface ForNowReaderSettings {
   readingMode: ReadingMode;
@@ -53,6 +54,10 @@ export class ForNowReaderSettingsTab extends PluginSettingTab {
       await this.plugin.savePluginData();
       this.plugin.propagateSettingsToViews();
     };
+    const debouncedSave = debounce(
+      () => void save(),
+      TIMING.SETTINGS_SAVE_DEBOUNCE_MS,
+    );
 
     // Reading
     new Setting(containerEl)
@@ -225,9 +230,9 @@ export class ForNowReaderSettingsTab extends PluginSettingTab {
         inp
           .setPlaceholder(t("settings.fontFamily.placeholder"))
           .setValue(this.plugin.data.settings.fontFamily)
-          .onChange(async (v) => {
+          .onChange((v) => {
             this.plugin.data.settings.fontFamily = v;
-            await save();
+            debouncedSave();
           }),
       )
       .addExtraButton((btn) =>
@@ -313,9 +318,9 @@ export class ForNowReaderSettingsTab extends PluginSettingTab {
         inp
           .setPlaceholder("Reading/Exports")
           .setValue(this.plugin.data.settings.exportFolder)
-          .onChange(async (v) => {
+          .onChange((v) => {
             this.plugin.data.settings.exportFolder = v;
-            await save();
+            debouncedSave();
           }),
       );
 
