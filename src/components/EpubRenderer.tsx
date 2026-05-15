@@ -6,6 +6,11 @@ import { ChevronLeft, ChevronRight, Heart, Sun, Type } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { READER, TIMING, resolveThemeColors } from "../constants";
 import { t } from "../i18n";
+import {
+  applyTypography,
+  buildTypographyCss,
+  TYPOGRAPHY_STYLESHEET_KEY,
+} from "../renderer/typography";
 import { normalizeHref, tip } from "../utils";
 import { ThemePanel } from "./ThemePanel";
 import { TocOverlay } from "./TocOverlay";
@@ -21,38 +26,6 @@ interface EpubRendererProps {
   onSettingsChange: (
     partial: Partial<ForNowReaderSettings>,
   ) => void | Promise<void>;
-}
-
-// !important to override epubjs's inline styles from size()/columns().
-function buildTypographyCss(s: ForNowReaderSettings): string {
-  const sidePad = Math.max(
-    0,
-    Math.round((1 - s.textWidth / READER.MAX_TEXT_WIDTH_PX) * 50),
-  );
-  const { bg, fg: color } = resolveThemeColors(s.readerTheme);
-
-  const lines = [
-    `html { line-height: ${s.lineHeight} !important; }`,
-    `body {`,
-    `  padding-left: ${sidePad}% !important;`,
-    `  padding-right: ${sidePad}% !important;`,
-    `  box-sizing: border-box !important;`,
-    `  font-size: ${s.fontSize}px !important;`,
-    s.fontFamily ? `  font-family: ${s.fontFamily} !important;` : "",
-    bg ? `  background: ${bg} !important;` : "",
-    color ? `  color: ${color} !important;` : "",
-    `}`,
-    `p { margin-bottom: ${s.paragraphSpacing}px !important; }`,
-    `img, video, svg, figure { max-width: 100% !important; height: auto !important; }`,
-    `table { max-width: 100% !important; table-layout: fixed !important; word-break: break-word !important; }`,
-    `pre, code { white-space: pre-wrap !important; word-break: break-all !important; max-width: 100% !important; }`,
-  ];
-  return lines.filter(Boolean).join("\n");
-}
-
-function applyTypography(r: Rendition, s: ForNowReaderSettings): void {
-  const css = buildTypographyCss(s);
-  r.getContents().forEach((c) => c.addStylesheetCss(css, "fnr-typography"));
 }
 
 export function EpubRenderer({
@@ -184,7 +157,7 @@ export function EpubRenderer({
     rendition.hooks.content.register((contents) => {
       contents.addStylesheetCss(
         buildTypographyCss(localSettingsRef.current),
-        "fnr-typography",
+        TYPOGRAPHY_STYLESHEET_KEY,
       );
     });
 
