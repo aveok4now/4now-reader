@@ -58,6 +58,7 @@ export default class FourNowReaderPlugin extends Plugin {
 					this.data,
 					(vaultPath, newTab) => this.openEpubByPath(vaultPath, newTab),
 					() => this.savePluginData(),
+					() => this.sessionService.flushRecentReorder(),
 				),
 		);
 
@@ -131,6 +132,7 @@ export default class FourNowReaderPlugin extends Plugin {
 	}
 
 	async onunload(): Promise<void> {
+		this.sessionService.flushRecentReorder();
 		await this.sessionService.flush();
 	}
 

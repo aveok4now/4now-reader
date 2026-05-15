@@ -108,7 +108,7 @@ export class ReaderView extends ItemView {
 			this.currentCfi = progress?.cfi;
 			this.renderEpub(book, this.currentCfi, file);
 
-			await this.sessionService.updateRecent(file.path);
+			this.sessionService.updateRecent(file.path);
 		} finally {
 			this.openingPath = null;
 		}

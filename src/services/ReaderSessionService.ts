@@ -5,6 +5,10 @@ import type { ReadingProgress } from "../models/types";
 
 export class ReaderSessionService {
 	private debounceTimer: ReturnType<typeof setTimeout> | null = null;
+	// In-memory queue of vault paths opened since the last flush. We defer the
+	// recentBooks reorder until the user re-enters the Recent tab so a click
+	// inside that tab doesn't make the row they just clicked jump to the top.
+	private pendingRecentMoves: string[] = [];
 
 	constructor(
 		private readonly plugin: Plugin,
@@ -57,12 +61,20 @@ export class ReaderSessionService {
 		}
 	}
 
-	async updateRecent(vaultPath: string): Promise<void> {
-		const deduped = (this.data.recentBooks ?? []).filter(
-			(p) => p !== vaultPath,
-		);
-		this.data.recentBooks = [vaultPath, ...deduped].slice(0, LIBRARY.RECENT_BOOKS_LIMIT);
-		await this.plugin.saveData(this.data);
+	updateRecent(vaultPath: string): void {
+		this.pendingRecentMoves.push(vaultPath);
+	}
+
+	flushRecentReorder(): void {
+		if (this.pendingRecentMoves.length === 0) return;
+		const moves = this.pendingRecentMoves;
+		this.pendingRecentMoves = [];
+		let recent = [...(this.data.recentBooks ?? [])];
+		for (const path of moves) {
+			recent = [path, ...recent.filter((p) => p !== path)];
+		}
+		this.data.recentBooks = recent.slice(0, LIBRARY.RECENT_BOOKS_LIMIT);
+		void this.plugin.saveData(this.data);
 		this.onChange?.();
 	}
 }

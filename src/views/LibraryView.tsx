@@ -151,6 +151,7 @@ interface LibraryPanelProps {
 	onOpenBook: (vaultPath: string) => void;
 	onOpenBookNewTab: (vaultPath: string) => void;
 	onUiStateChange: (changes: Partial<LibraryUiState>) => void;
+	onFlushRecentReorder: () => void;
 }
 
 function LibraryPanel({
@@ -159,6 +160,7 @@ function LibraryPanel({
 	onOpenBook,
 	onOpenBookNewTab,
 	onUiStateChange,
+	onFlushRecentReorder,
 }: LibraryPanelProps) {
 	const [query, setQuery] = useState("");
 	const [sortOrder, setSortOrder] = useState<LibrarySortOrder>(
@@ -168,7 +170,21 @@ function LibraryPanel({
 		data.libraryUiState.activeTab,
 	);
 
+	// Frozen order of paths in the Recent tab — only refreshed when the user
+	// enters the tab from elsewhere. Cards inside the tab still re-render live
+	// (progress %, titles); only the list ORDER stays put.
+	const [recentSnapshot, setRecentSnapshot] = useState<string[]>(() => {
+		if (data.libraryUiState.activeTab === "recent") {
+			onFlushRecentReorder();
+		}
+		return [...data.recentBooks];
+	});
+
 	const handleTabChange = (tab: LibraryTab) => {
+		if (tab === "recent" && activeTab !== "recent") {
+			onFlushRecentReorder();
+			setRecentSnapshot([...data.recentBooks]);
+		}
 		setActiveTab(tab);
 		onUiStateChange({ activeTab: tab });
 	};
@@ -179,7 +195,7 @@ function LibraryPanel({
 	};
 
 	const books = Object.values(data.libraryIndex);
-	const recentBooks = data.recentBooks
+	const recentBooks = recentSnapshot
 		.map((p) => data.libraryIndex[p])
 		.filter((b): b is BookMeta => b !== undefined);
 
@@ -270,6 +286,7 @@ export class LibraryView extends ItemView {
 		private readonly data: PluginData,
 		private readonly openBook: (vaultPath: string, newTab?: boolean) => Promise<void>,
 		private readonly persist: () => Promise<void>,
+		private readonly flushRecentReorder: () => void,
 	) {
 		super(leaf);
 	}
@@ -313,6 +330,7 @@ export class LibraryView extends ItemView {
 					Object.assign(this.data.libraryUiState, changes);
 					void this.persist();
 				}}
+				onFlushRecentReorder={this.flushRecentReorder}
 			/>,
 		);
 	}
