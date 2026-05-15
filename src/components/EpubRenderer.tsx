@@ -1,7 +1,7 @@
 import type { Book, Rendition } from "epubjs";
 import { ChevronLeft, ChevronRight, Sun, Type } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { READER, TIMING } from "../constants";
+import { READER, TIMING, resolveThemeColors } from "../constants";
 import { t } from "../i18n";
 import type { FourNowReaderSettings } from "../settings";
 import { tip } from "../utils";
@@ -20,32 +20,10 @@ interface EpubRendererProps {
 	) => void | Promise<void>;
 }
 
-function getReaderBackground(s: FourNowReaderSettings): string {
-	switch (s.readerTheme) {
-		case "light":  return "#ffffff";
-		case "dark":   return "#1e1e1e";
-		case "sepia":  return "#f4ecd8";
-		case "cream":  return "#FAF7EF";
-		case "night":  return "#111111";
-		default:
-			return getComputedStyle(document.body)
-				.getPropertyValue("--background-primary")
-				.trim();
-	}
-}
-
 // !important to override epubjs's inline styles from size()/columns().
 function buildTypographyCss(s: FourNowReaderSettings): string {
 	const sidePad = Math.max(0, Math.round((1 - s.textWidth / READER.MAX_TEXT_WIDTH_PX) * 50));
-	const bg = getReaderBackground(s);
-	const color =
-		s.readerTheme === "adaptive" ? getComputedStyle(document.body).getPropertyValue("--text-normal").trim()
-		: s.readerTheme === "light"  ? "#1a1a1a"
-		: s.readerTheme === "dark"   ? "#d4d4d4"
-		: s.readerTheme === "sepia"  ? "#3b2f2f"
-		: s.readerTheme === "cream"  ? "#3D3427"
-		: s.readerTheme === "night"  ? "#999999"
-		: "";
+	const { bg, fg: color } = resolveThemeColors(s.readerTheme);
 
 	const lines = [
 		`html { line-height: ${s.lineHeight} !important; }`,
@@ -500,7 +478,7 @@ export function EpubRenderer({
 			<div
 				ref={containerRef}
 				className="fnr-epub-container"
-				style={{ background: getReaderBackground(localSettings) }}
+				style={{ background: resolveThemeColors(localSettings.readerTheme).bg }}
 			/>
 
 			{activePanel !== null && (

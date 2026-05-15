@@ -440,6 +440,51 @@
 
 /* Theme panel */
 
+/* Theme swatch grid — circular previews of each reader theme. */
+
+.fnr-theme-swatches {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	padding: 12px;
+}
+
+.fnr-theme-swatch {
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	border: 1px solid var(--background-modifier-border);
+	cursor: pointer;
+	padding: 0;
+	background: var(--background-primary);
+	transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.fnr-theme-swatch:hover {
+	transform: scale(1.1);
+}
+
+.fnr-theme-swatch:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
+}
+
+.fnr-theme-swatch[aria-checked="true"] {
+	box-shadow:
+		0 0 0 2px var(--background-secondary),
+		0 0 0 4px var(--interactive-accent);
+}
+
+/* Adaptive swatch: half/half hint that this theme tracks Obsidian. */
+
+.fnr-theme-swatch--adaptive {
+	background: linear-gradient(135deg,
+		var(--background-primary) 0%,
+		var(--background-primary) 50%,
+		var(--background-primary-alt, var(--background-secondary)) 50%,
+		var(--background-primary-alt, var(--background-secondary)) 100%);
+}
+
 .fnr-theme-panel-wrap {
 	right: 0;
 }
