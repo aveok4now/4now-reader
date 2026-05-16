@@ -1,11 +1,10 @@
 {
-  "id": "read4sidian",
-  "name": "Read4sidian",
+  "id": "4now-reader",
+  "name": "4now Reader",
   "version": "0.1.0",
-  "minAppVersion": "1.4.0",
+  "minAppVersion": "1.5.0",
   "description": "Read EPUB books directly inside your Obsidian vault.",
-  "author": "",
-  "authorUrl": "",
-  "fundingUrl": "",
-  "isDesktopOnly": false
+  "author": "aveok4now",
+  "authorUrl": "https://github.com/aveok4now",
+  "isDesktopOnly": true
 }

@@ -1,6 +1,8 @@
-import { moment } from 'obsidian';
-import en, { type TranslationKey } from './en';
-import ru from './ru';
+import type { TranslationKey } from "./en";
+
+import { moment } from "obsidian";
+import en from "./en";
+import ru from "./ru";
 
 export type SupportedLocale = 'auto' | 'en' | 'ru';
 
@@ -22,7 +24,14 @@ function resolveLocale(): string {
   return navLang in catalogs ? navLang : 'en';
 }
 
-export function t(key: TranslationKey): string {
+export function t(
+  key: TranslationKey,
+  params?: Record<string, string | number>,
+): string {
   const locale = resolveLocale();
-  return catalogs[locale]?.[key] ?? en[key];
+  const template = catalogs[locale]?.[key] ?? en[key];
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (_, name) =>
+    name in params ? String(params[name]) : `{${name}}`,
+  );
 }

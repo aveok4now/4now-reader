@@ -1,54 +1,57 @@
-import { Plugin } from "obsidian";
 import type { PluginData } from "../models/plugin-data";
 import type { ReadingProgress } from "../models/types";
 
+import { LIBRARY, TIMING } from "../constants";
+
 export class ReaderSessionService {
-	private debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-	constructor(
-		private readonly plugin: Plugin,
-		private readonly data: PluginData,
-	) {}
+  constructor(
+    private readonly data: PluginData,
+    private readonly persist: () => Promise<void>,
+    private readonly onChange?: () => void,
+  ) {}
 
-	getProgress(vaultPath: string): ReadingProgress | undefined {
-		return this.data.readingProgress?.[vaultPath];
-	}
+  getProgress(vaultPath: string): ReadingProgress | undefined {
+    return this.data.readingProgress[vaultPath];
+  }
 
-	recordProgress(
-		vaultPath: string,
-		cfi: string,
-		percentage: number,
-		chapterTitle?: string,
-	): void {
-		this.data.readingProgress ??= {};
-		this.data.readingProgress[vaultPath] = {
-			vaultPath,
-			cfi,
-			percentage,
-			chapterTitle,
-			updatedAt: Date.now(),
-		};
+  getRecentPaths(): string[] {
+    return Object.values(this.data.readingProgress)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, LIBRARY.RECENT_BOOKS_LIMIT)
+      .map((p) => p.vaultPath);
+  }
 
-		if (this.debounceTimer !== null) clearTimeout(this.debounceTimer);
-		this.debounceTimer = setTimeout(() => {
-			this.debounceTimer = null;
-			void this.plugin.saveData(this.data);
-		}, 1500);
-	}
+  recordProgress(
+    vaultPath: string,
+    cfi: string,
+    percentage: number,
+    chapterTitle?: string,
+  ): void {
+    const previous = this.data.readingProgress[vaultPath];
+    this.data.readingProgress[vaultPath] = {
+      vaultPath,
+      cfi,
+      percentage,
+      chapterTitle: chapterTitle ?? previous?.chapterTitle,
+      updatedAt: Date.now(),
+    };
 
-	async flush(): Promise<void> {
-		if (this.debounceTimer !== null) {
-			clearTimeout(this.debounceTimer);
-			this.debounceTimer = null;
-			await this.plugin.saveData(this.data);
-		}
-	}
+    this.onChange?.();
 
-	async updateRecent(vaultPath: string): Promise<void> {
-		const deduped = (this.data.recentBooks ?? []).filter(
-			(p) => p !== vaultPath,
-		);
-		this.data.recentBooks = [vaultPath, ...deduped].slice(0, 20);
-		await this.plugin.saveData(this.data);
-	}
+    if (this.debounceTimer !== null) clearTimeout(this.debounceTimer);
+    this.debounceTimer = setTimeout(() => {
+      this.debounceTimer = null;
+      void this.persist();
+    }, TIMING.SESSION_SAVE_DEBOUNCE_MS);
+  }
+
+  async flush(): Promise<void> {
+    if (this.debounceTimer !== null) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+      await this.persist();
+    }
+  }
 }

@@ -1,7 +1,13 @@
-import type { BookMeta, Bookmark, Highlight, ReadingProgress } from './types';
-import type { Read4sidianSettings } from '../settings';
+import type { BookMeta, ReadingProgress } from "./types";
+import type { ForNowReaderSettings } from "./settings";
 
-export type LibrarySortOrder = "title-asc" | "title-desc" | "author-asc" | "last-opened";
+import { DEFAULT_SETTINGS } from "./settings";
+
+export type LibrarySortOrder =
+  | "title-asc"
+  | "title-desc"
+  | "author-asc"
+  | "last-opened";
 export type LibraryTab = "recent" | "all" | "favorites";
 
 export interface LibraryUiState {
@@ -15,16 +21,21 @@ export const DEFAULT_LIBRARY_UI_STATE: LibraryUiState = {
 };
 
 export interface PluginData {
-  settings: Read4sidianSettings;
-  /** vaultPath -> BookMeta */
+  schemaVersion: number;
+  settings: ForNowReaderSettings;
   libraryIndex: Record<string, BookMeta>;
-  /** vaultPaths, most recent first (max 20) */
-  recentBooks: string[];
-  /** vaultPath -> ReadingProgress */
   readingProgress: Record<string, ReadingProgress>;
-  /** vaultPath -> Bookmark[] */
-  bookmarks: Record<string, Bookmark[]>;
-  /** vaultPath -> Highlight[] */
-  highlights: Record<string, Highlight[]>;
+  favorites: Record<string, true>;
   libraryUiState: LibraryUiState;
 }
+
+export const CURRENT_SCHEMA_VERSION = 1;
+
+export const DEFAULT_DATA: PluginData = {
+  schemaVersion: CURRENT_SCHEMA_VERSION,
+  settings: { ...DEFAULT_SETTINGS },
+  libraryIndex: {},
+  readingProgress: {},
+  favorites: {},
+  libraryUiState: { ...DEFAULT_LIBRARY_UI_STATE },
+};

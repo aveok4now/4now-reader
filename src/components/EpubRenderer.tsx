@@ -1,90 +1,243 @@
-import type { Book, Rendition } from "epubjs";
-import React, { useEffect, useRef } from "react";
-import type { Read4sidianSettings } from "../settings";
+import type { Book } from "epubjs";
+import type { ForNowReaderSettings } from "../models/settings";
+import type { PanelKey } from "./reader/ReaderToolbar";
+
+import React, { useCallback, useEffect, useRef, useState } from "react";
+
+import { READER, TIMING } from "../constants";
+import { resolveThemeColors } from "../utils";
+
+import { ReaderOverlays } from "./reader/ReaderOverlays";
+import { ReaderToolbar } from "./reader/ReaderToolbar";
+import { useEpubRendition } from "./reader/useEpubRendition";
 
 interface EpubRendererProps {
-	book: Book;
-	settings: Read4sidianSettings;
-	initialCfi?: string;
-	onProgress: (cfi: string, pct: number, chapterTitle?: string) => void;
-}
-
-function getThemeStyles(
-	theme: Read4sidianSettings["readerTheme"],
-): Record<string, string> {
-	switch (theme) {
-		case "light":
-			return { background: "#ffffff", color: "#1a1a1a" };
-		case "dark":
-			return { background: "#1e1e1e", color: "#d4d4d4" };
-		case "sepia":
-			return { background: "#f4ecd8", color: "#3b2f2f" };
-		case "adaptive":
-		default:
-			return {};
-	}
+  book: Book;
+  settings: ForNowReaderSettings;
+  initialCfi?: string;
+  initialProgress?: number;
+  isUserInitiated: boolean;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
+  onProgress: (cfi: string, pct: number, chapterTitle?: string) => void;
+  onSettingsChange: (
+    partial: Partial<ForNowReaderSettings>,
+  ) => void | Promise<void>;
 }
 
 export function EpubRenderer({
-	book,
-	settings,
-	initialCfi,
-	onProgress,
+  book,
+  settings,
+  initialCfi,
+  initialProgress,
+  isUserInitiated,
+  isFavorite,
+  onToggleFavorite,
+  onProgress,
+  onSettingsChange,
 }: EpubRendererProps) {
-	const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const readerWrapRef = useRef<HTMLDivElement>(null);
 
-	useEffect(() => {
-		if (!containerRef.current) return;
+  const [localSettings, setLocalSettings] =
+    useState<ForNowReaderSettings>(settings);
+  const localSettingsRef = useRef<ForNowReaderSettings>(settings);
+  useEffect(() => {
+    localSettingsRef.current = localSettings;
+  }, [localSettings]);
 
-		const rendition: Rendition = book.renderTo(containerRef.current, {
-			width: "100%",
-			height: "100%",
-			flow: settings.readingMode === "scroll" ? "scrolled-doc" : "paginated",
-		});
+  const [activePanel, setActivePanel] = useState<PanelKey | null>(null);
+  const activePanelRef = useRef<PanelKey | null>(null);
+  useEffect(() => {
+    activePanelRef.current = activePanel;
+  }, [activePanel]);
 
-		const themeStyles = getThemeStyles(settings.readerTheme);
+  const isPaginated = localSettings.readingMode === "paginated";
 
-		rendition.themes.default({
-			html: {
-				"font-size": `${settings.fontSize}px`,
-				"line-height": String(settings.lineHeight),
-			},
-			body: {
-				"max-width": `${settings.textWidth}px`,
-				margin: "0 auto",
-				...(settings.fontFamily ? { "font-family": settings.fontFamily } : {}),
-				...themeStyles,
-			},
-		});
+  const { state, controller } = useEpubRendition({
+    book,
+    containerRef,
+    isPaginated,
+    initialSettings: settings,
+    settingsRef: localSettingsRef,
+    initialCfi,
+    initialProgress,
+    isUserInitiated,
+    onProgress,
+  });
 
-		const applyTheme = () => {
-			if (Object.keys(themeStyles).length === 0) return;
-			rendition.getContents().forEach((contents) => {
-				contents.addStylesheetRules({ body: themeStyles });
-			});
-		};
+  const [tocWidth, setTocWidth] = useState<number | null>(null);
+  const tocDragCleanupRef = useRef<(() => void) | null>(null);
 
-		rendition.on("rendered", applyTheme);
+  const handleTocResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const wrap = readerWrapRef.current;
+    if (!wrap) return;
+    const wrapRect = wrap.getBoundingClientRect();
 
-		const onRelocated = (location: unknown) => {
-			const loc = location as {
-				start: { cfi: string; percentage?: number; title?: string };
-			};
-			onProgress(loc.start.cfi, loc.start.percentage ?? 0, loc.start.title);
-		};
+    const onMouseMove = (me: MouseEvent) => {
+      const newW = me.clientX - wrapRect.left;
+      const fontSize = parseFloat(
+        getComputedStyle(document.documentElement).fontSize,
+      );
+      const minW = READER.TOC_MIN_WIDTH_EM * fontSize;
+      const maxW = wrapRect.width * READER.TOC_MAX_WIDTH_PCT;
+      setTocWidth(Math.max(minW, Math.min(maxW, newW)));
+    };
+    const stop = () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", stop);
+      tocDragCleanupRef.current = null;
+    };
+    tocDragCleanupRef.current?.();
+    tocDragCleanupRef.current = stop;
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", stop);
+  }, []);
 
-		rendition.on("relocated", onRelocated);
+  useEffect(() => () => tocDragCleanupRef.current?.(), []);
 
-		if (initialCfi) {
-			rendition.display(initialCfi);
-		} else {
-			rendition.display();
-		}
+  const [toolbarVisible, setToolbarVisible] = useState(true);
+  const hideTimerRef = useRef<number | null>(null);
 
-		return () => {
-			rendition.destroy();
-		};
-	}, [book]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setActivePanel(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
 
-	return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
+  useEffect(
+    () => () => {
+      if (hideTimerRef.current !== null) clearTimeout(hideTimerRef.current);
+    },
+    [],
+  );
+
+  const didMountRef = useRef(false);
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    const merged = { ...localSettingsRef.current, ...settings };
+    localSettingsRef.current = merged;
+    setLocalSettings(merged);
+    controller.applySettings(merged);
+  }, [
+    settings.readerTheme,
+    settings.fontSize,
+    settings.lineHeight,
+    settings.paragraphSpacing,
+    settings.textWidth,
+    settings.fontFamily,
+    settings.toolbarAutoHide,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: see comment above.
+  ]);
+
+  const handleSettingsChange = useCallback(
+    (partial: Partial<ForNowReaderSettings>) => {
+      void onSettingsChange(partial);
+      const merged = { ...localSettings, ...partial };
+      localSettingsRef.current = merged;
+      setLocalSettings(merged);
+      // readingMode and (paginated) textWidth need a fresh rendition; ReaderView handles it.
+      const needsRebuild =
+        "readingMode" in partial ||
+        ("textWidth" in partial && localSettings.readingMode === "paginated");
+      if (needsRebuild) return;
+      controller.applySettings(merged);
+    },
+    [onSettingsChange, localSettings, controller],
+  );
+
+  useEffect(() => {
+    if (activePanel !== null) {
+      if (hideTimerRef.current !== null) {
+        clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = null;
+      }
+      setToolbarVisible(true);
+    }
+  }, [activePanel]);
+
+  useEffect(() => {
+    if (!localSettings.toolbarAutoHide) return;
+    if (activePanel !== null) return;
+    const id = window.setTimeout(
+      () => setToolbarVisible(false),
+      TIMING.TOOLBAR_AUTOHIDE_MS,
+    );
+    return () => clearTimeout(id);
+  }, [localSettings.toolbarAutoHide, activePanel]);
+
+  const showToolbar = useCallback(() => {
+    if (hideTimerRef.current !== null) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+    setToolbarVisible(true);
+  }, []);
+
+  const hideToolbar = useCallback(() => {
+    if (activePanelRef.current !== null) return;
+    hideTimerRef.current = window.setTimeout(
+      () => setToolbarVisible(false),
+      TIMING.TOOLBAR_HIDE_DELAY_MS,
+    );
+  }, []);
+
+  const togglePanel = (panel: PanelKey) =>
+    setActivePanel((p) => (p === panel ? null : panel));
+
+  return (
+    <div className="fnr-reader-wrap" ref={readerWrapRef}>
+      {localSettings.toolbarAutoHide && (
+        <div
+          className={`fnr-autohide-zone${toolbarVisible ? " is-inactive" : ""}`}
+          onMouseEnter={showToolbar}
+        />
+      )}
+
+      <ReaderToolbar
+        readingMode={localSettings.readingMode}
+        autoHide={localSettings.toolbarAutoHide}
+        visible={toolbarVisible}
+        isFirst={state.isFirst}
+        isLast={state.isLast}
+        isPaginated={isPaginated}
+        chapterTitle={state.chapterTitle}
+        progress={state.progress}
+        displayedPage={state.displayedPage}
+        displayedTotal={state.displayedTotal}
+        activePanel={activePanel}
+        isFavorite={isFavorite}
+        onPrev={controller.prev}
+        onNext={controller.next}
+        onPanelToggle={togglePanel}
+        onToggleFavorite={onToggleFavorite}
+        onMouseEnter={localSettings.toolbarAutoHide ? showToolbar : undefined}
+        onMouseLeave={localSettings.toolbarAutoHide ? hideToolbar : undefined}
+      />
+
+      <div
+        ref={containerRef}
+        className="fnr-epub-container"
+        style={{ background: resolveThemeColors(localSettings.readerTheme).bg }}
+      />
+
+      <ReaderOverlays
+        activePanel={activePanel}
+        navItems={state.navItems}
+        currentHref={state.currentHref}
+        tocWidth={tocWidth}
+        settings={localSettings}
+        onClose={() => setActivePanel(null)}
+        onTocResizeStart={handleTocResizeStart}
+        onTocSelect={controller.displayHref}
+        onSettingsChange={handleSettingsChange}
+      />
+    </div>
+  );
 }

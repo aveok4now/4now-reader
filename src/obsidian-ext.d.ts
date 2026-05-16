@@ -1,7 +1,7 @@
 export {};
 
 declare module "obsidian" {
-	interface WorkspaceLeaf {
-		updateHeader(): void;
-	}
+  interface WorkspaceLeaf {
+    updateHeader(): void;
+  }
 }
