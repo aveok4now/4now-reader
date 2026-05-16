@@ -34,16 +34,6 @@
   background: var(--background-modifier-hover);
 }
 
-/* Reader view shell */
-
-.fnr-reader-view {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-}
 
 /* Toolbar */
 
@@ -94,13 +84,6 @@
   overflow-x: hidden !important;
 }
 
-.fnr-epub-frame {
-  width: 100%;
-  height: 100%;
-  border: none;
-  display: block;
-}
-
 /* State screens (loading / error) */
 
 .fnr-state-screen {
@@ -120,13 +103,16 @@
   height: 3rem;
 }
 
-.fnr-error-detail {
-  font-size: 0.75rem;
-  font-family: var(--font-monospace);
-  color: var(--text-faint);
-  margin-top: 8px;
-  max-width: 480px;
+.fnr-state-error {
+  padding: 24px;
   text-align: center;
+}
+
+.fnr-state-error p {
+  font-family: var(--font-monospace);
+  font-size: 0.85rem;
+  color: var(--text-faint);
+  max-width: 600px;
   word-break: break-word;
 }
 
@@ -324,21 +310,10 @@
   text-align: right;
 }
 
-/* Epub iframe theme overrides  */
-
-.fnr-epub-light body {
-  background: #ffffff;
-  color: #1a1a1a;
-}
-
-.fnr-epub-dark body {
-  background: #1e1e1e;
-  color: #d4d4d4;
-}
-
-.fnr-epub-sepia body {
-  background: #f4ecd8;
-  color: #3b2f2f;
+/* Hide Obsidian's view-header on the reader leaf so the epub gets full leaf height.
+   Tab title is unchanged; only the per-leaf header bar is hidden. */
+.workspace-leaf-content[data-type="4now-reader-view"] .view-header {
+  display: none;
 }
 
 /* Reader wrap — fills the entire .view-content area (position: relative in Obsidian).
@@ -437,7 +412,7 @@
 
 .fnr-overlay-panel {
   position: absolute;
-  top: var(--fnr-toolbar-height, 36px);
+  top: 36px;
   z-index: 11;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
@@ -454,7 +429,7 @@
   width: 18em;
   min-width: 10em;
   max-width: 60%;
-  max-height: calc(100% - var(--fnr-toolbar-height, 36px));
+  max-height: calc(100% - 36px);
   overflow-y: auto;
   position: absolute;
   border-radius: 0 var(--radius-m) var(--radius-m) 0;
@@ -566,11 +541,6 @@
   right: 0;
 }
 
-.fnr-theme-toggle {
-  flex-direction: column;
-  gap: 2px;
-}
-
 .fnr-typography-popover {
   padding: var(--size-4-2);
   min-width: 220px;
@@ -589,10 +559,6 @@
 
 .fnr-popover-row--label {
   margin-top: 4px;
-}
-
-.fnr-popover-row--muted {
-  opacity: 0.4;
 }
 
 .fnr-typography-popover input[type="range"]:disabled {

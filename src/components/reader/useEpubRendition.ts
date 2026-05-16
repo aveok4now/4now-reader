@@ -1,7 +1,6 @@
-import type { Book, EpubLocation, Rendition } from "epubjs";
+import type { Book, EpubLocation, NavItem, Rendition } from "epubjs";
 import type { RefObject } from "react";
-import type { ForNowReaderSettings } from "../../settings";
-import type { NavItem } from "../TocOverlay";
+import type { ForNowReaderSettings } from "../../models/settings";
 
 import { useEffect, useRef, useState } from "react";
 
@@ -39,6 +38,8 @@ interface UseEpubRenditionParams {
   initialSettings: ForNowReaderSettings;
   settingsRef: RefObject<ForNowReaderSettings | null>;
   initialCfi?: string;
+  initialProgress?: number;
+  isUserInitiated: boolean;
   onProgress: (cfi: string, pct: number, chapterTitle?: string) => void;
 }
 
@@ -49,6 +50,8 @@ export function useEpubRendition({
   initialSettings,
   settingsRef,
   initialCfi,
+  initialProgress,
+  isUserInitiated,
   onProgress,
 }: UseEpubRenditionParams): {
   state: RenditionState;
@@ -64,7 +67,7 @@ export function useEpubRendition({
   const pendingTocHref = useRef<string | null>(null);
   const locationsReadyRef = useRef(false);
 
-  const [progress, setProgress] = useState(0);
+  const [progress, setProgress] = useState((initialProgress ?? 0) * 100);
   const [isFirst, setIsFirst] = useState(false);
   const [isLast, setIsLast] = useState(false);
   const [chapterTitle, setChapterTitle] = useState("");
@@ -110,8 +113,6 @@ export function useEpubRendition({
 
     renditionRef.current = rendition;
 
-    // Content hook fires before first paint. Don't re-inject on `rendered` —
-    // replacing the same stylesheet causes a visible reflow.
     rendition.hooks.content.register((contents) => {
       const s = settingsRef.current ?? initialSettings;
       contents.addStylesheetCss(
@@ -121,7 +122,7 @@ export function useEpubRendition({
     });
 
     void book.loaded.navigation.then((nav) => {
-      setNavItems(nav.toc as NavItem[]);
+      setNavItems(nav.toc);
     });
 
     const onRelocated = (location: unknown) => {
@@ -137,7 +138,6 @@ export function useEpubRendition({
           ? pending
           : rawHref,
       );
-      setProgress(pct * 100);
       setIsFirst(loc.atStart ?? false);
       setIsLast(loc.atEnd ?? false);
       setDisplayedPage(loc.start.displayed?.page ?? 0);
@@ -145,6 +145,7 @@ export function useEpubRendition({
       const fallbackTitle = loc.start.title ?? "";
       if (fallbackTitle) setChapterTitle(fallbackTitle);
       if (locationsReadyRef.current) {
+        setProgress(pct * 100);
         onProgressRef.current(loc.start.cfi, pct, fallbackTitle);
       }
     };
@@ -157,18 +158,20 @@ export function useEpubRendition({
       void rendition.display();
     }
 
-    // Persist real percentage once locations land; relocated takes over after.
     void book.locations.generate(READER.CFI_GENERATION_POINTS).then(() => {
+      if (renditionRef.current !== rendition) return;
       locationsReadyRef.current = true;
-      const loc = renditionRef.current?.currentLocation();
+      const loc = rendition.currentLocation();
       if (loc?.start?.cfi) {
         const pct = loc.start.percentage ?? 0;
         setProgress(pct * 100);
-        onProgressRef.current(
-          loc.start.cfi,
-          pct,
-          chapterTitleRef.current || undefined,
-        );
+        if (isUserInitiated) {
+          onProgressRef.current(
+            loc.start.cfi,
+            pct,
+            chapterTitleRef.current || undefined,
+          );
+        }
       }
     });
 
@@ -191,12 +194,11 @@ export function useEpubRendition({
       handleKeydown(args[0] as KeyboardEvent);
     rendition.on("keydown", onIframeKeydown);
 
-    // Debounced resize: epubjs needs pixel sizes and breaks if called mid-nav.
     let pendingSize: { w: number; h: number } | null = null;
     let resizeTimer: number | null = null;
     let ro: ResizeObserver | null = null;
-    // RO's initial fire matches the mount size — skip to avoid post-paint flicker.
     let skipInitialResize = true;
+
     if (containerRef.current) {
       ro = new ResizeObserver((entries) => {
         const entry = entries[entries.length - 1];
@@ -253,7 +255,7 @@ export function useEpubRendition({
     displayHref: (href: string) => {
       pendingTocHref.current = href;
       const baseHref = href.split("#")[0];
-      // epubjs handles fragments poorly; try base first, fall back.
+
       void renditionRef.current?.display(baseHref).catch(() => {
         void renditionRef.current?.display(href);
       });

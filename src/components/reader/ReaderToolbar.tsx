@@ -1,4 +1,3 @@
-import type React from "react";
 import type { ReadingMode } from "../../models/types";
 
 import { ChevronLeft, ChevronRight, Heart, Sun, Type } from "lucide-react";
@@ -66,7 +65,7 @@ export function ReaderToolbar({
       <button
         className="fnr-toolbar-btn"
         disabled={isFirst}
-        ref={tip(prevLabel) as React.Ref<HTMLButtonElement>}
+        ref={tip<HTMLButtonElement>(prevLabel)}
         onClick={onPrev}
       >
         <ChevronLeft size={16} />
@@ -74,7 +73,7 @@ export function ReaderToolbar({
 
       <button
         className={`fnr-toolbar-btn fnr-toolbar-chapter${activePanel === "toc" ? " is-active" : ""}`}
-        ref={tip(t("toolbar.toc")) as React.Ref<HTMLButtonElement>}
+        ref={tip<HTMLButtonElement>(t("toolbar.toc"))}
         onClick={() => onPanelToggle("toc")}
       >
         <span className="fnr-chapter-title">
@@ -92,7 +91,7 @@ export function ReaderToolbar({
       <button
         className="fnr-toolbar-btn"
         disabled={isLast}
-        ref={tip(nextLabel) as React.Ref<HTMLButtonElement>}
+        ref={tip<HTMLButtonElement>(nextLabel)}
         onClick={onNext}
       >
         <ChevronRight size={16} />
@@ -100,7 +99,7 @@ export function ReaderToolbar({
 
       <button
         className={`fnr-toolbar-btn${activePanel === "typography" ? " is-active" : ""}`}
-        ref={tip(t("toolbar.typography")) as React.Ref<HTMLButtonElement>}
+        ref={tip<HTMLButtonElement>(t("toolbar.typography"))}
         onClick={() => onPanelToggle("typography")}
       >
         <Type size={16} />
@@ -108,7 +107,7 @@ export function ReaderToolbar({
 
       <button
         className={`fnr-toolbar-btn${activePanel === "theme" ? " is-active" : ""}`}
-        ref={tip(t("toolbar.theme")) as React.Ref<HTMLButtonElement>}
+        ref={tip<HTMLButtonElement>(t("toolbar.theme"))}
         onClick={() => onPanelToggle("theme")}
       >
         <Sun size={16} />
@@ -116,15 +115,13 @@ export function ReaderToolbar({
 
       <button
         className={`fnr-toolbar-btn fnr-favorite-btn${isFavorite ? " is-favorited" : ""}`}
-        ref={
-          tip(
-            t(
-              isFavorite
-                ? "library.favorites.tooltip.remove"
-                : "library.favorites.tooltip.add",
-            ),
-          ) as React.Ref<HTMLButtonElement>
-        }
+        ref={tip<HTMLButtonElement>(
+          t(
+            isFavorite
+              ? "library.favorites.tooltip.remove"
+              : "library.favorites.tooltip.add",
+          ),
+        )}
         onClick={onToggleFavorite}
       >
         <Heart size={16} fill={isFavorite ? "currentColor" : "none"} />

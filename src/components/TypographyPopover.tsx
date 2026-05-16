@@ -1,8 +1,9 @@
-import type { ForNowReaderSettings } from "../settings";
+import type { ForNowReaderSettings } from "../models/settings";
 
 import { useEffect, useState } from "react";
-import { rangePct, SLIDER_LIMITS } from "../constants";
+import { SLIDER_LIMITS } from "../constants";
 import { t } from "../i18n";
+import { rangePct } from "../utils";
 import { FontPicker } from "./FontPicker";
 
 interface TypographyPopoverProps {
@@ -98,7 +99,7 @@ export function TypographyPopover({
         }
       />
 
-      {/* Text width */}
+      {/* Text width - paginated mode sizes pages to the container, so the slider has no effect. */}
       <div className="fnr-popover-row">
         <span>{t("settings.textWidth.name")}</span>
         <span className="fnr-popover-value">
@@ -112,6 +113,7 @@ export function TypographyPopover({
         max={SLIDER_LIMITS.textWidth.max}
         step={SLIDER_LIMITS.textWidth.step}
         value={settings.textWidth}
+        disabled={settings.readingMode === "paginated"}
         onChange={(e) =>
           onSettingsChange({ textWidth: Number(e.target.value) })
         }

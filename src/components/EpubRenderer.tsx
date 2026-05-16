@@ -1,10 +1,11 @@
 import type { Book } from "epubjs";
-import type { ForNowReaderSettings } from "../settings";
+import type { ForNowReaderSettings } from "../models/settings";
 import type { PanelKey } from "./reader/ReaderToolbar";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-import { READER, TIMING, resolveThemeColors } from "../constants";
+import { READER, TIMING } from "../constants";
+import { resolveThemeColors } from "../utils";
 
 import { ReaderOverlays } from "./reader/ReaderOverlays";
 import { ReaderToolbar } from "./reader/ReaderToolbar";
@@ -14,6 +15,8 @@ interface EpubRendererProps {
   book: Book;
   settings: ForNowReaderSettings;
   initialCfi?: string;
+  initialProgress?: number;
+  isUserInitiated: boolean;
   isFavorite: boolean;
   onToggleFavorite: () => void;
   onProgress: (cfi: string, pct: number, chapterTitle?: string) => void;
@@ -26,6 +29,8 @@ export function EpubRenderer({
   book,
   settings,
   initialCfi,
+  initialProgress,
+  isUserInitiated,
   isFavorite,
   onToggleFavorite,
   onProgress,
@@ -56,10 +61,13 @@ export function EpubRenderer({
     initialSettings: settings,
     settingsRef: localSettingsRef,
     initialCfi,
+    initialProgress,
+    isUserInitiated,
     onProgress,
   });
 
   const [tocWidth, setTocWidth] = useState<number | null>(null);
+  const tocDragCleanupRef = useRef<(() => void) | null>(null);
 
   const handleTocResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -76,13 +84,18 @@ export function EpubRenderer({
       const maxW = wrapRect.width * READER.TOC_MAX_WIDTH_PCT;
       setTocWidth(Math.max(minW, Math.min(maxW, newW)));
     };
-    const onMouseUp = () => {
+    const stop = () => {
       document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
+      document.removeEventListener("mouseup", stop);
+      tocDragCleanupRef.current = null;
     };
+    tocDragCleanupRef.current?.();
+    tocDragCleanupRef.current = stop;
     document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
+    document.addEventListener("mouseup", stop);
   }, []);
+
+  useEffect(() => () => tocDragCleanupRef.current?.(), []);
 
   const [toolbarVisible, setToolbarVisible] = useState(true);
   const hideTimerRef = useRef<number | null>(null);
@@ -95,8 +108,13 @@ export function EpubRenderer({
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  // Skip initial run: localSettings is seeded from settings, so this would
-  // schedule a redundant render and flicker.
+  useEffect(
+    () => () => {
+      if (hideTimerRef.current !== null) clearTimeout(hideTimerRef.current);
+    },
+    [],
+  );
+
   const didMountRef = useRef(false);
   useEffect(() => {
     if (!didMountRef.current) {
@@ -115,7 +133,7 @@ export function EpubRenderer({
     settings.textWidth,
     settings.fontFamily,
     settings.toolbarAutoHide,
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only react to setting-value changes, not controller reference churn.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: see comment above.
   ]);
 
   const handleSettingsChange = useCallback(

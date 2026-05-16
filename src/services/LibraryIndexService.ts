@@ -1,73 +1,60 @@
 import type { PluginData } from "../models/plugin-data";
-import type { BookMeta } from "../models/types";
+import type { TFile, Vault } from "obsidian";
 
 import ePub from "epubjs";
-import { TFile, Vault } from "obsidian";
 
 export class LibraryIndexService {
-	constructor(
-		private readonly vault: Vault,
-		private readonly data: PluginData,
-		private readonly persist: () => Promise<void>,
-	) {}
+  constructor(
+    private readonly vault: Vault,
+    private readonly data: PluginData,
+    private readonly persist: () => Promise<void>,
+  ) {}
 
-	async scanVault(): Promise<void> {
-		const files = this.vault.getFiles().filter((f) => f.extension === "epub");
-		for (const file of files) {
-			await this.scanFile(file);
-		}
-		await this.persist();
-	}
+  async scanVault(): Promise<void> {
+    const files = this.vault.getFiles().filter((f) => f.extension === "epub");
+    for (const file of files) {
+      await this.scanFile(file);
+    }
+    await this.persist();
+  }
 
-	async scanFile(file: TFile): Promise<void> {
-		try {
-			const ab = await this.vault.readBinary(file);
-			const book = ePub(ab);
-			// Swallow secondary rejections; don't book.destroy() here — it would
-			// tear down internals while these promises are still in-flight.
-			void book.opened.catch(() => {});
-			const { metadata, ...rest } = book.loaded;
-			Object.values(rest).forEach((p) => void p.catch(() => {}));
-			const meta = await metadata;
+  async scanFile(file: TFile): Promise<boolean> {
+    let book: ReturnType<typeof ePub> | null = null;
+    try {
+      const ab = await this.vault.readBinary(file);
+      book = ePub(ab);
 
-			const existing = this.data.libraryIndex[file.path];
-			this.data.libraryIndex[file.path] = {
-				vaultPath: file.path,
-				title: meta.title || file.basename,
-				author: meta.creator || "",
-				lastOpened: existing?.lastOpened,
-			};
-		} catch (err) {
-			console.error(`[4now] failed to scan ${file.path}:`, err);
-		}
-	}
+      await Promise.allSettled([book.opened, ...Object.values(book.loaded)]);
+      const meta = await book.loaded.metadata;
 
-	removeFile(vaultPath: string): void {
-		delete this.data.libraryIndex[vaultPath];
-		if (this.data.favorites) delete this.data.favorites[vaultPath];
-	}
+      const existing = this.data.libraryIndex[file.path];
+      this.data.libraryIndex[file.path] = {
+        vaultPath: file.path,
+        title: meta.title || file.basename,
+        author: meta.creator || "",
+        lastOpened: existing?.lastOpened,
+      };
+      return true;
+    } catch (err) {
+      console.error(`[4now] failed to scan ${file.path}:`, err);
+      return false;
+    } finally {
+      try {
+        book?.destroy();
+      } catch {}
+    }
+  }
 
-	renameFile(oldPath: string, newPath: string, newFile: TFile): void {
-		const existing = this.data.libraryIndex[oldPath];
-		if (existing) {
-			delete this.data.libraryIndex[oldPath];
-			this.data.libraryIndex[newPath] = { ...existing, vaultPath: newPath };
-		} else {
-			void this.scanFile(newFile).then(() => this.persist());
-		}
-	}
+  removeFile(vaultPath: string): void {
+    delete this.data.libraryIndex[vaultPath];
+    delete this.data.favorites[vaultPath];
+  }
 
-	getBook(vaultPath: string): BookMeta | undefined {
-		return this.data.libraryIndex[vaultPath];
-	}
-
-	getAllBooks(): BookMeta[] {
-		return Object.values(this.data.libraryIndex);
-	}
-
-	getRecentBooks(): BookMeta[] {
-		return this.data.recentBooks
-			.map((p) => this.data.libraryIndex[p])
-			.filter((b): b is BookMeta => b !== undefined);
-	}
+  renameFile(oldPath: string, newPath: string): boolean {
+    const existing = this.data.libraryIndex[oldPath];
+    if (!existing) return false;
+    delete this.data.libraryIndex[oldPath];
+    this.data.libraryIndex[newPath] = { ...existing, vaultPath: newPath };
+    return true;
+  }
 }

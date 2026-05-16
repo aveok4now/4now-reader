@@ -1,16 +1,56 @@
 import type { Book } from "epubjs";
-import type { ReadingProgress } from "../models/types";
-import type { ForNowReaderSettings } from "../settings";
+import type { ForNowReaderSettings } from "../models/settings";
+import type { Workspace } from "obsidian";
 
 import ePub from "epubjs";
 import { ItemView, TFile, type ViewStateResult, WorkspaceLeaf } from "obsidian";
 import { createRoot } from "react-dom/client";
 import { EpubRenderer } from "../components/EpubRenderer";
-import { ObsidianAppContext } from "../contexts";
 import { t } from "../i18n";
 import { ReaderSessionService } from "../services/ReaderSessionService";
 
 export const READER_VIEW_TYPE = "4now-reader-view";
+
+export interface ReaderViewState {
+  file?: string;
+}
+
+export interface ReaderViewDeps {
+  sessionService: ReaderSessionService;
+  settings: ForNowReaderSettings;
+  saveSettings: () => Promise<void>;
+  isFavorite: (vaultPath: string) => boolean;
+  toggleFavorite: (vaultPath: string) => void;
+  isInternalOpen: () => boolean;
+  setInternalOpen: (value: boolean) => void;
+}
+
+export function findReaderReuseTarget(
+  workspace: Workspace,
+  file: string,
+  excludeLeaf?: WorkspaceLeaf,
+): WorkspaceLeaf | null {
+  const readerLeaves = workspace.getLeavesOfType(READER_VIEW_TYPE);
+
+  const sameFile = readerLeaves.find((l) => {
+    if (l === excludeLeaf) return false;
+    const state = l.getViewState().state as { file?: string } | undefined;
+    return state?.file === file;
+  });
+  if (sameFile) return sameFile;
+
+  const mostRecent = workspace.getMostRecentLeaf(workspace.rootSplit);
+  if (mostRecent && mostRecent !== excludeLeaf) return mostRecent;
+
+  const otherReader = readerLeaves.find((l) => l !== excludeLeaf);
+  if (otherReader) return otherReader;
+
+  let mainAny: WorkspaceLeaf | null = null;
+  workspace.iterateRootLeaves((l) => {
+    if (l !== excludeLeaf && !mainAny) mainAny = l;
+  });
+  return mainAny;
+}
 
 export class ReaderView extends ItemView {
   private root: ReturnType<typeof createRoot> | null = null;
@@ -18,20 +58,26 @@ export class ReaderView extends ItemView {
   private currentFile: TFile | null = null;
   private currentBook: Book | null = null;
   private currentCfi: string | undefined = undefined;
+  private currentProgress: number | undefined = undefined;
+  private currentIsUserInitiated = false;
   private openingPath: string | null = null;
+  private sessionService: ReaderSessionService;
+  private settings: ForNowReaderSettings;
+  private saveSettings: () => Promise<void>;
+  private isFavorite: (vaultPath: string) => boolean;
+  private toggleFavorite: (vaultPath: string) => void;
+  private isInternalOpen: () => boolean;
+  private setInternalOpen: (value: boolean) => void;
 
-  constructor(
-    leaf: WorkspaceLeaf,
-    private sessionService: ReaderSessionService,
-    private settings: ForNowReaderSettings,
-    private loadProgress: (
-      vaultPath: string,
-    ) => Promise<ReadingProgress | undefined>,
-    private saveSettings: () => Promise<void>,
-    private isFavorite: (vaultPath: string) => boolean,
-    private toggleFavorite: (vaultPath: string) => void,
-  ) {
+  constructor(leaf: WorkspaceLeaf, deps: ReaderViewDeps) {
     super(leaf);
+    this.sessionService = deps.sessionService;
+    this.settings = deps.settings;
+    this.saveSettings = deps.saveSettings;
+    this.isFavorite = deps.isFavorite;
+    this.toggleFavorite = deps.toggleFavorite;
+    this.isInternalOpen = deps.isInternalOpen;
+    this.setInternalOpen = deps.setInternalOpen;
   }
 
   refreshFavoriteFor(vaultPath: string): void {
@@ -53,8 +99,34 @@ export class ReaderView extends ItemView {
   }
 
   async setState(state: unknown, result: ViewStateResult): Promise<void> {
+    const { file } = state as ReaderViewState;
+
+    if (file && !this.isInternalOpen() && !this.settings.openInNewLeaf) {
+      const target = findReaderReuseTarget(this.app.workspace, file, this.leaf);
+      if (target) {
+        this.app.workspace.setActiveLeaf(target, { focus: true });
+        this.app.workspace.revealLeaf(target);
+        const targetFile = (
+          target.getViewState().state as { file?: string } | undefined
+        )?.file;
+        if (targetFile !== file) {
+          this.setInternalOpen(true);
+          try {
+            await target.setViewState({
+              type: READER_VIEW_TYPE,
+              state: { file },
+              active: true,
+            });
+          } finally {
+            this.setInternalOpen(false);
+          }
+        }
+        queueMicrotask(() => this.leaf.detach());
+        return;
+      }
+    }
+
     await super.setState(state, result);
-    const { file } = state as { file?: string };
     if (file) {
       const tfile = this.app.vault.getAbstractFileByPath(file);
       if (tfile instanceof TFile) {
@@ -68,30 +140,22 @@ export class ReaderView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    // Hide Obsidian's view-header so the epub gets full leaf height.
-    (this.containerEl.children[0] as HTMLElement).style.setProperty(
-      "display",
-      "none",
-      "important",
-    );
     this.root = createRoot(this.containerEl.children[1] as HTMLElement);
-    this.root.render(
-      <ObsidianAppContext.Provider value={this.app}>
-        <div className="fnr-state-screen" />
-      </ObsidianAppContext.Provider>,
-    );
+    if (this.currentBook && this.currentFile) {
+      this.renderEpub(this.currentBook, this.currentCfi, this.currentFile);
+    } else {
+      this.root.render(<div className="fnr-state-screen" />);
+    }
   }
 
   async onClose(): Promise<void> {
+    const book = this.currentBook;
+    this.currentBook = null;
     this.root?.unmount();
-    (this.containerEl.children[0] as HTMLElement).style.removeProperty(
-      "display",
-    );
-    if (this.currentBook) {
+    if (book) {
       try {
-        this.currentBook.destroy();
+        book.destroy();
       } catch {}
-      this.currentBook = null;
     }
     await this.sessionService.flush();
   }
@@ -101,8 +165,6 @@ export class ReaderView extends ItemView {
     if (this.currentFile?.path === file.path && this.currentBook) return;
     this.openingPath = file.path;
     try {
-      // Destroy the old book's epubjs internals so its in-flight section
-      // loads don't fire hooks against a torn-down rendition.
       const previousBook = this.currentBook;
       this.currentBook = null;
 
@@ -110,52 +172,73 @@ export class ReaderView extends ItemView {
       this.currentTitle = file.basename;
       this.leaf.updateHeader();
 
-      const arrayBuffer = await this.app.vault.readBinary(file);
-      const book = ePub(arrayBuffer);
-      this.currentBook = book;
-      await book.opened;
-      if (previousBook) {
-        try {
-          previousBook.destroy();
-        } catch {}
+      try {
+        const arrayBuffer = await this.app.vault.readBinary(file);
+        const book = ePub(arrayBuffer);
+        this.currentBook = book;
+        await book.opened;
+        if (previousBook) {
+          try {
+            previousBook.destroy();
+          } catch {}
+        }
+        const metadata = await book.loaded.metadata;
+
+        this.currentTitle = metadata.title || file.basename;
+        this.leaf.updateHeader();
+
+        const saved = this.sessionService.getProgress(file.path);
+        this.currentCfi = saved?.cfi;
+        this.currentProgress = saved?.percentage;
+        this.currentIsUserInitiated = this.app.workspace.layoutReady;
+        this.renderEpub(book, this.currentCfi, file);
+      } catch (err) {
+        console.error(`[4now] failed to open ${file.path}:`, err);
+        this.renderError(err);
+        if (previousBook) {
+          try {
+            previousBook.destroy();
+          } catch {}
+        }
       }
-      const metadata = await book.loaded.metadata;
-
-      this.currentTitle = metadata.title || file.basename;
-      this.leaf.updateHeader();
-
-      const progress = await this.loadProgress(file.path);
-      this.currentCfi = progress?.cfi;
-      this.renderEpub(book, this.currentCfi, file);
-
-      this.sessionService.updateRecent(file.path);
     } finally {
       this.openingPath = null;
     }
   }
 
+  private renderError(err: unknown): void {
+    const message = err instanceof Error ? err.message : String(err);
+    this.root?.render(
+      <div className="fnr-state-screen fnr-state-error">
+        <h3>{t("reader.error.title")}</h3>
+        <p>{message}</p>
+      </div>,
+    );
+  }
+
   private renderEpub(book: Book, initialCfi?: string, file?: TFile): void {
     const f = file ?? this.currentFile;
     if (!f) return;
-    // `key` forces a fresh rendition when flow/column settings change.
-    // textWidth is handled inside EpubRenderer via CSS — no remount.
+
     const renditionKey = this.settings.readingMode;
+
     this.root?.render(
-      <ObsidianAppContext.Provider value={this.app}>
-        <EpubRenderer
-          key={renditionKey}
-          book={book}
-          settings={this.settings}
-          initialCfi={initialCfi}
-          isFavorite={this.isFavorite(f.path)}
-          onToggleFavorite={() => this.toggleFavorite(f.path)}
-          onProgress={(cfi, pct, chapter) => {
-            this.currentCfi = cfi;
-            this.sessionService.recordProgress(f.path, cfi, pct, chapter);
-          }}
-          onSettingsChange={this.handleSettingsChange}
-        />
-      </ObsidianAppContext.Provider>,
+      <EpubRenderer
+        key={renditionKey}
+        book={book}
+        settings={this.settings}
+        initialCfi={initialCfi}
+        initialProgress={this.currentProgress}
+        isUserInitiated={this.currentIsUserInitiated}
+        isFavorite={this.isFavorite(f.path)}
+        onToggleFavorite={() => this.toggleFavorite(f.path)}
+        onProgress={(cfi, pct, chapter) => {
+          this.currentCfi = cfi;
+          this.currentProgress = pct;
+          this.sessionService.recordProgress(f.path, cfi, pct, chapter);
+        }}
+        onSettingsChange={this.handleSettingsChange}
+      />,
     );
   }
 
@@ -170,7 +253,6 @@ export class ReaderView extends ItemView {
   ): Promise<void> => {
     Object.assign(this.settings, partial);
     await this.saveSettings();
-    // Rebuild only when readingMode changes (drives key=); other settings stay local.
     if ("readingMode" in partial && this.currentBook && this.currentFile) {
       this.renderEpub(this.currentBook, this.currentCfi, this.currentFile);
     }

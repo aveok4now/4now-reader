@@ -1,9 +1,14 @@
-import type { BookMeta, Bookmark, Highlight, ReadingProgress } from "./types";
+import type { BookMeta, ReadingProgress } from "./types";
 import type { LibrarySortOrder, LibraryTab, PluginData } from "./plugin-data";
 
-import { SLIDER_LIMITS } from "../constants";
-import { DEFAULT_SETTINGS } from "../settings";
+import {
+  LOCALES,
+  READING_MODES,
+  SLIDER_LIMITS,
+  THEME_VALUES,
+} from "../constants";
 import { DEFAULT_DATA, DEFAULT_LIBRARY_UI_STATE } from "./plugin-data";
+import { DEFAULT_SETTINGS } from "./settings";
 
 type Dict = Record<string, unknown>;
 
@@ -17,6 +22,11 @@ const isFiniteNumber = (v: unknown): v is number =>
 const clamp = (n: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, n));
 
+const isMember = <T extends string>(
+  v: unknown,
+  members: ReadonlyArray<T>,
+): v is T => typeof v === "string" && (members as ReadonlyArray<string>).includes(v);
+
 export function migrate(raw: unknown): PluginData {
   if (!isObject(raw)) return { ...DEFAULT_DATA };
 
@@ -26,11 +36,8 @@ export function migrate(raw: unknown): PluginData {
       : DEFAULT_DATA.schemaVersion,
     settings: migrateSettings(raw.settings),
     libraryIndex: migrateLibraryIndex(raw.libraryIndex),
-    recentBooks: migrateStringArray(raw.recentBooks),
     readingProgress: migrateReadingProgress(raw.readingProgress),
     favorites: migrateFavorites(raw.favorites),
-    bookmarks: migrateBookmarks(raw.bookmarks),
-    highlights: migrateHighlights(raw.highlights),
     libraryUiState: migrateLibraryUiState(raw.libraryUiState),
   };
 }
@@ -39,17 +46,10 @@ function migrateSettings(raw: unknown): PluginData["settings"] {
   const base = { ...DEFAULT_SETTINGS };
   if (!isObject(raw)) return base;
 
-  if (raw.readingMode === "scroll" || raw.readingMode === "paginated") {
+  if (isMember(raw.readingMode, READING_MODES)) {
     base.readingMode = raw.readingMode;
   }
-  if (
-    raw.readerTheme === "adaptive" ||
-    raw.readerTheme === "light" ||
-    raw.readerTheme === "dark" ||
-    raw.readerTheme === "sepia" ||
-    raw.readerTheme === "cream" ||
-    raw.readerTheme === "night"
-  ) {
+  if (isMember(raw.readerTheme, THEME_VALUES)) {
     base.readerTheme = raw.readerTheme;
   }
   if (isString(raw.fontFamily)) base.fontFamily = raw.fontFamily;
@@ -84,14 +84,11 @@ function migrateSettings(raw: unknown): PluginData["settings"] {
   if (isString(raw.exportFolder)) base.exportFolder = raw.exportFolder;
   if (typeof raw.scanOnStartup === "boolean")
     base.scanOnStartup = raw.scanOnStartup;
-  if (raw.footnoteBehavior === "popover" || raw.footnoteBehavior === "inline") {
-    base.footnoteBehavior = raw.footnoteBehavior;
-  }
   if (typeof raw.openInNewLeaf === "boolean")
     base.openInNewLeaf = raw.openInNewLeaf;
   if (typeof raw.toolbarAutoHide === "boolean")
     base.toolbarAutoHide = raw.toolbarAutoHide;
-  if (raw.locale === "auto" || raw.locale === "en" || raw.locale === "ru") {
+  if (isMember(raw.locale, LOCALES)) {
     base.locale = raw.locale;
   }
   return base;
@@ -114,11 +111,6 @@ function migrateLibraryIndex(raw: unknown): Record<string, BookMeta> {
     };
   }
   return out;
-}
-
-function migrateStringArray(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.filter(isString);
 }
 
 function migrateReadingProgress(
@@ -153,59 +145,17 @@ function migrateFavorites(raw: unknown): Record<string, true> {
   return out;
 }
 
-function migrateBookmarks(raw: unknown): Record<string, Bookmark[]> {
-  if (!isObject(raw)) return {};
-  const out: Record<string, Bookmark[]> = {};
-  for (const [key, value] of Object.entries(raw)) {
-    if (!Array.isArray(value)) continue;
-    const items = value.filter(
-      (v): v is Bookmark =>
-        isObject(v) &&
-        isString(v.id) &&
-        isString(v.vaultPath) &&
-        isString(v.cfi) &&
-        isFiniteNumber(v.createdAt),
-    );
-    if (items.length > 0) out[key] = items;
-  }
-  return out;
-}
-
-function migrateHighlights(raw: unknown): Record<string, Highlight[]> {
-  if (!isObject(raw)) return {};
-  const out: Record<string, Highlight[]> = {};
-  for (const [key, value] of Object.entries(raw)) {
-    if (!Array.isArray(value)) continue;
-    const items = value.filter(
-      (v): v is Highlight =>
-        isObject(v) &&
-        isString(v.id) &&
-        isString(v.vaultPath) &&
-        isString(v.cfi) &&
-        isString(v.text) &&
-        isString(v.color) &&
-        isFiniteNumber(v.createdAt),
-    );
-    if (items.length > 0) out[key] = items;
-  }
-  return out;
-}
-
 function migrateLibraryUiState(raw: unknown): PluginData["libraryUiState"] {
   const base = { ...DEFAULT_LIBRARY_UI_STATE };
   if (!isObject(raw)) return base;
-  const validSort: LibrarySortOrder[] = [
+  const sorts: ReadonlyArray<LibrarySortOrder> = [
     "title-asc",
     "title-desc",
     "author-asc",
     "last-opened",
   ];
-  const validTab: LibraryTab[] = ["recent", "all", "favorites"];
-  if (validSort.includes(raw.sortOrder as LibrarySortOrder)) {
-    base.sortOrder = raw.sortOrder as LibrarySortOrder;
-  }
-  if (validTab.includes(raw.activeTab as LibraryTab)) {
-    base.activeTab = raw.activeTab as LibraryTab;
-  }
+  const tabs: ReadonlyArray<LibraryTab> = ["recent", "all", "favorites"];
+  if (isMember(raw.sortOrder, sorts)) base.sortOrder = raw.sortOrder;
+  if (isMember(raw.activeTab, tabs)) base.activeTab = raw.activeTab;
   return base;
 }

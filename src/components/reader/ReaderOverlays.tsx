@@ -1,6 +1,6 @@
+import type { NavItem } from "epubjs";
 import type React from "react";
-import type { ForNowReaderSettings } from "../../settings";
-import type { NavItem } from "../TocOverlay";
+import type { ForNowReaderSettings } from "../../models/settings";
 import type { PanelKey } from "./ReaderToolbar";
 
 import { ThemePanel } from "../ThemePanel";

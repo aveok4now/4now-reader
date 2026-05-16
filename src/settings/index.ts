@@ -5,39 +5,12 @@ import type { ReaderTheme, ReadingMode } from "../models/types";
 import { App, Modal, Notice, PluginSettingTab, Setting } from "obsidian";
 import { SLIDER_LIMITS, THEME_OPTIONS, TIMING } from "../constants";
 import { setLocale, t } from "../i18n";
+import {
+  DEFAULT_SETTINGS,
+  type ForNowReaderSettings,
+  resetSetting,
+} from "../models/settings";
 import { debounce } from "../utils";
-
-export interface ForNowReaderSettings {
-  readingMode: ReadingMode;
-  readerTheme: ReaderTheme;
-  fontFamily: string;
-  fontSize: number;
-  lineHeight: number;
-  paragraphSpacing: number;
-  textWidth: number;
-  exportFolder: string;
-  scanOnStartup: boolean;
-  footnoteBehavior: "popover" | "inline";
-  openInNewLeaf: boolean;
-  toolbarAutoHide: boolean;
-  locale: SupportedLocale;
-}
-
-export const DEFAULT_SETTINGS: ForNowReaderSettings = {
-  readingMode: "scroll",
-  readerTheme: "adaptive",
-  fontFamily: "Georgia, serif",
-  fontSize: 16,
-  lineHeight: 1.6,
-  paragraphSpacing: 10,
-  textWidth: 504,
-  exportFolder: "Reading/Exports",
-  scanOnStartup: true,
-  footnoteBehavior: "popover",
-  openInNewLeaf: false,
-  toolbarAutoHide: false,
-  locale: "auto",
-};
 
 export class ForNowReaderSettingsTab extends PluginSettingTab {
   constructor(
@@ -280,12 +253,9 @@ export class ForNowReaderSettingsTab extends PluginSettingTab {
               return;
             }
             new ResetConfirmModal(this.app, async () => {
-              const target = this.plugin.data.settings as unknown as Record<
-                string,
-                unknown
-              >;
+              const target = this.plugin.data.settings;
               for (const k of resetKeys) {
-                target[k] = DEFAULT_SETTINGS[k];
+                resetSetting(target, k);
               }
               await save();
               new Notice(t("settings.reset.success"));

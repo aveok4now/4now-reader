@@ -1,7 +1,6 @@
 import type { PluginData } from "./models/plugin-data";
-import type { ReadingProgress } from "./models/types";
 
-import { Plugin, TFile, WorkspaceLeaf } from "obsidian";
+import { Notice, Plugin, TFile, WorkspaceLeaf } from "obsidian";
 import { setLocale, t } from "./i18n";
 import { migrate } from "./models/migrations";
 import { DEFAULT_DATA } from "./models/plugin-data";
@@ -9,52 +8,60 @@ import { LibraryIndexService } from "./services/LibraryIndexService";
 import { ReaderSessionService } from "./services/ReaderSessionService";
 import { ForNowReaderSettingsTab } from "./settings";
 import { LIBRARY_VIEW_TYPE, LibraryView } from "./views/LibraryView";
-import { READER_VIEW_TYPE, ReaderView } from "./views/ReaderView";
+import {
+  findReaderReuseTarget,
+  READER_VIEW_TYPE,
+  ReaderView,
+  type ReaderViewState,
+} from "./views/ReaderView";
 
 export default class ForNowReaderPlugin extends Plugin {
   data: PluginData = { ...DEFAULT_DATA };
   private sessionService!: ReaderSessionService;
   private libraryService!: LibraryIndexService;
   private lastActiveReaderPath: string | null = null;
+  private internalOpenDepth = 0;
 
   async onload(): Promise<void> {
     await this.loadPluginData();
     setLocale(this.data.settings.locale);
 
-    this.sessionService = new ReaderSessionService(this, this.data, () =>
+    const persist = () => this.savePluginData();
+    this.sessionService = new ReaderSessionService(this.data, persist, () =>
       this.invalidateLibraryView(),
     );
     this.libraryService = new LibraryIndexService(
       this.app.vault,
       this.data,
-      () => this.savePluginData(),
+      persist,
     );
 
     this.registerView(
       READER_VIEW_TYPE,
       (leaf) =>
-        new ReaderView(
-          leaf,
-          this.sessionService,
-          this.data.settings,
-          (vaultPath) => this.getProgress(vaultPath),
-          () => this.savePluginData(),
-          (vaultPath) => this.isFavorite(vaultPath),
-          (vaultPath) => this.toggleFavorite(vaultPath),
-        ),
+        new ReaderView(leaf, {
+          sessionService: this.sessionService,
+          settings: this.data.settings,
+          saveSettings: persist,
+          isFavorite: (path) => this.isFavorite(path),
+          toggleFavorite: (path) => this.toggleFavorite(path),
+          isInternalOpen: () => this.internalOpenDepth > 0,
+          setInternalOpen: (v) => {
+            this.internalOpenDepth += v ? 1 : -1;
+          },
+        }),
     );
 
     this.registerView(
       LIBRARY_VIEW_TYPE,
       (leaf) =>
-        new LibraryView(
-          leaf,
-          this.data,
-          (vaultPath, newTab) => this.openEpubByPath(vaultPath, newTab),
-          () => this.savePluginData(),
-          () => this.sessionService.flushRecentReorder(),
-          (vaultPath) => this.toggleFavorite(vaultPath),
-        ),
+        new LibraryView(leaf, {
+          data: this.data,
+          openBook: (path, newTab) => this.openEpubByPath(path, newTab),
+          persist,
+          getRecentPaths: () => this.sessionService.getRecentPaths(),
+          toggleFavorite: (path) => this.toggleFavorite(path),
+        }),
     );
 
     this.registerExtensions(["epub"], READER_VIEW_TYPE);
@@ -87,10 +94,7 @@ export default class ForNowReaderPlugin extends Plugin {
     this.registerEvent(
       this.app.vault.on("create", (file) => {
         if (file instanceof TFile && file.extension === "epub") {
-          void this.libraryService
-            .scanFile(file)
-            .then(() => this.savePluginData())
-            .then(() => this.invalidateLibraryView());
+          void this.ingestEpub(file);
         }
       }),
     );
@@ -107,8 +111,12 @@ export default class ForNowReaderPlugin extends Plugin {
     this.registerEvent(
       this.app.vault.on("rename", (file, oldPath) => {
         if (file instanceof TFile && file.extension === "epub") {
-          this.libraryService.renameFile(oldPath, file.path, file);
-          void this.savePluginData().then(() => this.invalidateLibraryView());
+          const renamed = this.libraryService.renameFile(oldPath, file.path);
+          if (renamed) {
+            void this.savePluginData().then(() => this.invalidateLibraryView());
+          } else {
+            void this.ingestEpub(file);
+          }
         }
       }),
     );
@@ -118,16 +126,21 @@ export default class ForNowReaderPlugin extends Plugin {
         this.updateLibraryActiveBook(),
       ),
     );
+    this.registerEvent(
+      this.app.workspace.on("layout-change", () =>
+        this.updateLibraryActiveBook(),
+      ),
+    );
 
     this.app.workspace.onLayoutReady(() => {
       if (this.data.settings.scanOnStartup) {
         void this.scanLibrary();
       }
+      this.updateLibraryActiveBook();
     });
   }
 
   async onunload(): Promise<void> {
-    this.sessionService.flushRecentReorder();
     await this.sessionService.flush();
   }
 
@@ -142,19 +155,26 @@ export default class ForNowReaderPlugin extends Plugin {
   async openEpubFile(file: TFile, forceNewLeaf?: boolean): Promise<void> {
     if (this.data.libraryIndex[file.path]) {
       this.data.libraryIndex[file.path].lastOpened = Date.now();
+      void this.savePluginData();
     }
 
     const openNew = forceNewLeaf ?? this.data.settings.openInNewLeaf;
-    const leaf: WorkspaceLeaf = openNew
+
+    const leaf = openNew
       ? this.app.workspace.getLeaf("tab")
-      : (this.app.workspace.getMostRecentLeaf(this.app.workspace.rootSplit) ??
+      : (findReaderReuseTarget(this.app.workspace, file.path) ??
         this.app.workspace.getLeaf("tab"));
 
-    await leaf.setViewState({
-      type: READER_VIEW_TYPE,
-      state: { file: file.path },
-      active: true,
-    });
+    this.internalOpenDepth++;
+    try {
+      await leaf.setViewState({
+        type: READER_VIEW_TYPE,
+        state: { file: file.path },
+        active: true,
+      });
+    } finally {
+      this.internalOpenDepth--;
+    }
     this.app.workspace.revealLeaf(leaf);
 
     this.lastActiveReaderPath = file.path;
@@ -190,6 +210,18 @@ export default class ForNowReaderPlugin extends Plugin {
     this.invalidateLibraryView();
   }
 
+  private async ingestEpub(file: TFile): Promise<void> {
+    const ok = await this.libraryService.scanFile(file);
+    if (!ok) {
+      if (this.app.workspace.layoutReady) {
+        new Notice(t("library.scanFailed", { path: file.path }));
+      }
+      return;
+    }
+    await this.savePluginData();
+    this.invalidateLibraryView();
+  }
+
   private invalidateLibraryView(): void {
     for (const leaf of this.app.workspace.getLeavesOfType(LIBRARY_VIEW_TYPE)) {
       if (leaf.view instanceof LibraryView) leaf.view.invalidate();
@@ -205,8 +237,24 @@ export default class ForNowReaderPlugin extends Plugin {
   private updateLibraryActiveBook(): void {
     const readerView = this.app.workspace.getActiveViewOfType(ReaderView);
     if (readerView) {
-      this.lastActiveReaderPath =
-        (readerView.getState() as { file?: string }).file ?? null;
+      const file = (readerView.getState() as ReaderViewState).file;
+      if (file) this.lastActiveReaderPath = file;
+    } else {
+      const readerFiles = new Set<string>();
+      for (const leaf of this.app.workspace.getLeavesOfType(READER_VIEW_TYPE)) {
+        const state = leaf.getViewState().state as
+          | { file?: string }
+          | undefined;
+        if (state?.file) readerFiles.add(state.file);
+      }
+      if (readerFiles.size === 0) {
+        this.lastActiveReaderPath = null;
+      } else if (
+        this.lastActiveReaderPath === null ||
+        !readerFiles.has(this.lastActiveReaderPath)
+      ) {
+        this.lastActiveReaderPath = readerFiles.values().next().value ?? null;
+      }
     }
     this.setLibraryActiveBook(this.lastActiveReaderPath);
   }
@@ -220,16 +268,11 @@ export default class ForNowReaderPlugin extends Plugin {
     });
   }
 
-  private getProgress(vaultPath: string): Promise<ReadingProgress | undefined> {
-    return Promise.resolve(this.data.readingProgress?.[vaultPath]);
-  }
-
   isFavorite(vaultPath: string): boolean {
-    return this.data.favorites?.[vaultPath] === true;
+    return this.data.favorites[vaultPath] === true;
   }
 
   toggleFavorite(vaultPath: string): void {
-    this.data.favorites ??= {};
     if (this.data.favorites[vaultPath]) {
       delete this.data.favorites[vaultPath];
     } else {
