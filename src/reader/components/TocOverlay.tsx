@@ -3,7 +3,7 @@ import type { NavItem } from "epubjs";
 import React, { useEffect, useRef } from "react";
 
 import { READER } from "../constants";
-import { normalizeHref } from "../utils";
+import { normalizeHref } from "../epubjs/href";
 
 interface TocOverlayProps {
   navItems: NavItem[];

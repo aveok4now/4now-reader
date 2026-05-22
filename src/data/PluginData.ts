@@ -1,7 +1,7 @@
 import type { BookMeta, ReadingProgress } from "./types";
-import type { ForNowReaderSettings } from "./settings";
+import type { ForNowReaderSettings } from "../settings/schema";
 
-import { DEFAULT_SETTINGS } from "./settings";
+import { DEFAULT_SETTINGS } from "../settings/schema";
 
 export type LibrarySortOrder =
   | "title-asc"

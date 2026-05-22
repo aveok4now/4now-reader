@@ -1,19 +1,20 @@
-import type { PluginData } from "./models/plugin-data";
+import type { PluginData } from "./data/PluginData";
 
 import { Notice, Plugin, TFile, WorkspaceLeaf } from "obsidian";
+
+import { DEFAULT_DATA } from "./data/PluginData";
+import { migrate } from "./data/migrations";
 import { setLocale, t } from "./i18n";
-import { migrate } from "./models/migrations";
-import { DEFAULT_DATA } from "./models/plugin-data";
-import { LibraryIndexService } from "./services/LibraryIndexService";
-import { ReaderSessionService } from "./services/ReaderSessionService";
-import { ForNowReaderSettingsTab } from "./settings";
-import { LIBRARY_VIEW_TYPE, LibraryView } from "./views/LibraryView";
+import { LIBRARY_VIEW_TYPE, LibraryView } from "./library/LibraryView";
+import { LibraryIndexService } from "./library/LibraryIndexService";
 import {
   findReaderReuseTarget,
   READER_VIEW_TYPE,
   ReaderView,
   type ReaderViewState,
-} from "./views/ReaderView";
+} from "./reader/ReaderView";
+import { ReaderSessionService } from "./reader/ReaderSessionService";
+import { ForNowReaderSettingsTab } from "./settings/SettingsTab";
 
 export default class ForNowReaderPlugin extends Plugin {
   data: PluginData = { ...DEFAULT_DATA };
@@ -27,14 +28,8 @@ export default class ForNowReaderPlugin extends Plugin {
     setLocale(this.data.settings.locale);
 
     const persist = () => this.savePluginData();
-    this.sessionService = new ReaderSessionService(this.data, persist, () =>
-      this.invalidateLibraryView(),
-    );
-    this.libraryService = new LibraryIndexService(
-      this.app.vault,
-      this.data,
-      persist,
-    );
+    this.sessionService = new ReaderSessionService(this.data, persist, () => this.invalidateLibraryView());
+    this.libraryService = new LibraryIndexService(this.app.vault, this.data, persist);
 
     this.registerView(
       READER_VIEW_TYPE,
@@ -66,9 +61,7 @@ export default class ForNowReaderPlugin extends Plugin {
 
     this.registerExtensions(["epub"], READER_VIEW_TYPE);
 
-    this.addRibbonIcon("library", t("command.openLibrary"), () =>
-      this.activateLibraryView(),
-    );
+    this.addRibbonIcon("library", t("command.openLibrary"), () => this.activateLibraryView());
 
     this.addCommand({
       id: "open-library",
@@ -121,16 +114,8 @@ export default class ForNowReaderPlugin extends Plugin {
       }),
     );
 
-    this.registerEvent(
-      this.app.workspace.on("active-leaf-change", () =>
-        this.updateLibraryActiveBook(),
-      ),
-    );
-    this.registerEvent(
-      this.app.workspace.on("layout-change", () =>
-        this.updateLibraryActiveBook(),
-      ),
-    );
+    this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.updateLibraryActiveBook()));
+    this.registerEvent(this.app.workspace.on("layout-change", () => this.updateLibraryActiveBook()));
 
     this.app.workspace.onLayoutReady(() => {
       if (this.data.settings.scanOnStartup) {
@@ -162,8 +147,7 @@ export default class ForNowReaderPlugin extends Plugin {
 
     const leaf = openNew
       ? this.app.workspace.getLeaf("tab")
-      : (findReaderReuseTarget(this.app.workspace, file.path) ??
-        this.app.workspace.getLeaf("tab"));
+      : (findReaderReuseTarget(this.app.workspace, file.path) ?? this.app.workspace.getLeaf("tab"));
 
     this.internalOpenDepth++;
     try {
@@ -182,10 +166,7 @@ export default class ForNowReaderPlugin extends Plugin {
     this.invalidateLibraryView();
   }
 
-  private async openEpubByPath(
-    vaultPath: string,
-    forceNewLeaf?: boolean,
-  ): Promise<void> {
+  private async openEpubByPath(vaultPath: string, forceNewLeaf?: boolean): Promise<void> {
     const file = this.app.vault.getAbstractFileByPath(vaultPath);
     if (file instanceof TFile) {
       await this.openEpubFile(file, forceNewLeaf);
@@ -242,17 +223,12 @@ export default class ForNowReaderPlugin extends Plugin {
     } else {
       const readerFiles = new Set<string>();
       for (const leaf of this.app.workspace.getLeavesOfType(READER_VIEW_TYPE)) {
-        const state = leaf.getViewState().state as
-          | { file?: string }
-          | undefined;
+        const state = leaf.getViewState().state as { file?: string } | undefined;
         if (state?.file) readerFiles.add(state.file);
       }
       if (readerFiles.size === 0) {
         this.lastActiveReaderPath = null;
-      } else if (
-        this.lastActiveReaderPath === null ||
-        !readerFiles.has(this.lastActiveReaderPath)
-      ) {
+      } else if (this.lastActiveReaderPath === null || !readerFiles.has(this.lastActiveReaderPath)) {
         this.lastActiveReaderPath = readerFiles.values().next().value ?? null;
       }
     }

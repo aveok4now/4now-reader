@@ -1,5 +1,5 @@
 import type { SupportedLocale } from "../i18n";
-import type { ReaderTheme, ReadingMode } from "./types";
+import type { ReaderTheme, ReadingMode } from "../data/types";
 
 export interface ForNowReaderSettings {
   readingMode: ReadingMode;
@@ -31,9 +31,6 @@ export const DEFAULT_SETTINGS: ForNowReaderSettings = {
   locale: "auto",
 };
 
-export function resetSetting<K extends keyof ForNowReaderSettings>(
-  target: ForNowReaderSettings,
-  key: K,
-): void {
+export function resetSetting<K extends keyof ForNowReaderSettings>(target: ForNowReaderSettings, key: K): void {
   target[key] = DEFAULT_SETTINGS[key];
 }

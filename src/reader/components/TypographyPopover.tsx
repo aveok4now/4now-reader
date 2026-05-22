@@ -1,10 +1,18 @@
-import type { ForNowReaderSettings } from "../models/settings";
+import type { ForNowReaderSettings } from "../../settings/schema";
 
 import { useEffect, useState } from "react";
-import { SLIDER_LIMITS } from "../constants";
-import { t } from "../i18n";
-import { rangePct } from "../utils";
+
+import { t } from "../../i18n";
+import { SLIDER_LIMITS } from "../../settings/constants";
+
 import { FontPicker } from "./FontPicker";
+
+function rangePct(
+  value: number,
+  range: { min: number; max: number },
+): number {
+  return Math.round(((value - range.min) / (range.max - range.min)) * 100);
+}
 
 interface TypographyPopoverProps {
   settings: ForNowReaderSettings;

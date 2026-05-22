@@ -1,4 +1,4 @@
-import type { PluginData } from "../models/plugin-data";
+import type { PluginData } from "../data/PluginData";
 import type { TFile, Vault } from "obsidian";
 
 import ePub from "epubjs";
@@ -48,13 +48,27 @@ export class LibraryIndexService {
   removeFile(vaultPath: string): void {
     delete this.data.libraryIndex[vaultPath];
     delete this.data.favorites[vaultPath];
+    delete this.data.readingProgress[vaultPath];
   }
 
   renameFile(oldPath: string, newPath: string): boolean {
     const existing = this.data.libraryIndex[oldPath];
-    if (!existing) return false;
-    delete this.data.libraryIndex[oldPath];
-    this.data.libraryIndex[newPath] = { ...existing, vaultPath: newPath };
-    return true;
+    if (existing) {
+      delete this.data.libraryIndex[oldPath];
+      this.data.libraryIndex[newPath] = { ...existing, vaultPath: newPath };
+    }
+
+    if (this.data.favorites[oldPath]) {
+      delete this.data.favorites[oldPath];
+      this.data.favorites[newPath] = true;
+    }
+
+    const progress = this.data.readingProgress[oldPath];
+    if (progress) {
+      delete this.data.readingProgress[oldPath];
+      this.data.readingProgress[newPath] = { ...progress, vaultPath: newPath };
+    }
+
+    return existing !== undefined;
   }
 }

@@ -1,9 +1,9 @@
-import type { ReadingMode } from "../../models/types";
+import type { ReadingMode } from "../../data/types";
 
 import { ChevronLeft, ChevronRight, Heart, Sun, Type } from "lucide-react";
 
 import { t } from "../../i18n";
-import { tip } from "../../utils";
+import { tip } from "../../shared/tooltip";
 
 export type PanelKey = "toc" | "typography" | "theme";
 

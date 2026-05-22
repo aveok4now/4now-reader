@@ -1,15 +1,16 @@
 import type { Book } from "epubjs";
-import type { ForNowReaderSettings } from "../models/settings";
-import type { PanelKey } from "./reader/ReaderToolbar";
+import type { ForNowReaderSettings } from "../../settings/schema";
+import type { PanelKey } from "./ReaderToolbar";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-import { READER, TIMING } from "../constants";
-import { resolveThemeColors } from "../utils";
+import { resolveThemeColors } from "../../shared/theme";
+import { TIMING } from "../../shared/timing";
+import { READER } from "../constants";
+import { useEpubRendition } from "../useEpubRendition";
 
-import { ReaderOverlays } from "./reader/ReaderOverlays";
-import { ReaderToolbar } from "./reader/ReaderToolbar";
-import { useEpubRendition } from "./reader/useEpubRendition";
+import { ReaderOverlays } from "./ReaderOverlays";
+import { ReaderToolbar } from "./ReaderToolbar";
 
 interface EpubRendererProps {
   book: Book;

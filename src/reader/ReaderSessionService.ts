@@ -1,7 +1,8 @@
-import type { PluginData } from "../models/plugin-data";
-import type { ReadingProgress } from "../models/types";
+import type { PluginData } from "../data/PluginData";
+import type { ReadingProgress } from "../data/types";
 
-import { LIBRARY, TIMING } from "../constants";
+import { LIBRARY } from "../library/constants";
+import { TIMING } from "../shared/timing";
 
 export class ReaderSessionService {
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;

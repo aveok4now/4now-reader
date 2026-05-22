@@ -1,21 +1,9 @@
-interface FontData {
-  readonly family: string;
-  readonly fullName: string;
-  readonly postscriptName: string;
-  readonly style: string;
-}
-
-interface Window {
-  queryLocalFonts?(): Promise<FontData[]>;
-}
-
-declare module 'epubjs' {
+declare module "epubjs" {
   export interface Contents {
     addStylesheetRules(rules: Record<string, Record<string, string>>): void;
     addStylesheetCss(serializedCss: string, key: string): void;
   }
 
-  /** Mirrors epubjs Section / SpineItem shape (subset we rely on) */
   export interface SpineItem {
     href: string;
     index: number;
@@ -23,14 +11,12 @@ declare module 'epubjs' {
     properties: string[];
   }
 
-  /** Mirrors epubjs PageListItem */
   export interface PageListItem {
     href: string;
     label: string;
     cfi?: string;
   }
 
-  /** Location info from the relocated event and currentLocation() */
   export interface EpubLocation {
     start: {
       cfi: string;
@@ -49,12 +35,10 @@ declare module 'epubjs' {
     atEnd?: boolean;
   }
 
-  /** Subset of epubjs Locations API we use */
   export interface EpubLocations {
     generate(chars: number): Promise<string[]>;
   }
 
-  /** Subset of epubjs Hook API */
   export interface EpubHook {
     register(fn: (contents: Contents) => void): void;
   }
@@ -103,7 +87,6 @@ declare module 'epubjs' {
       options?: Record<string, unknown>,
     ): Rendition;
     destroy(): void;
-    /** Resolves when the book is fully open; rejects on any load failure. */
     opened: Promise<Book>;
     locations: EpubLocations;
     loaded: {

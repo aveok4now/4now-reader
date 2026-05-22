@@ -1,14 +1,11 @@
 import type { BookMeta, ReadingProgress } from "./types";
-import type { LibrarySortOrder, LibraryTab, PluginData } from "./plugin-data";
+import type { LibrarySortOrder, LibraryTab, PluginData } from "./PluginData";
 
-import {
-  LOCALES,
-  READING_MODES,
-  SLIDER_LIMITS,
-  THEME_VALUES,
-} from "../constants";
-import { DEFAULT_DATA, DEFAULT_LIBRARY_UI_STATE } from "./plugin-data";
-import { DEFAULT_SETTINGS } from "./settings";
+import { SLIDER_LIMITS } from "../settings/constants";
+import { THEME_VALUES } from "../shared/theme";
+import { LOCALES, READING_MODES } from "./types";
+import { DEFAULT_DATA, DEFAULT_LIBRARY_UI_STATE } from "./PluginData";
+import { DEFAULT_SETTINGS } from "../settings/schema";
 
 type Dict = Record<string, unknown>;
 

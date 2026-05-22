@@ -1,13 +1,15 @@
 import type { Book } from "epubjs";
-import type { ForNowReaderSettings } from "../models/settings";
+import type { ForNowReaderSettings } from "../settings/schema";
 import type { Workspace } from "obsidian";
 
 import ePub from "epubjs";
 import { ItemView, TFile, type ViewStateResult, WorkspaceLeaf } from "obsidian";
 import { createRoot } from "react-dom/client";
-import { EpubRenderer } from "../components/EpubRenderer";
+
 import { t } from "../i18n";
-import { ReaderSessionService } from "../services/ReaderSessionService";
+
+import { EpubRenderer } from "./components/EpubRenderer";
+import { ReaderSessionService } from "./ReaderSessionService";
 
 export const READER_VIEW_TYPE = "4now-reader-view";
 

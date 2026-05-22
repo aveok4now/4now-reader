@@ -1,16 +1,17 @@
 import type { Book, EpubLocation, NavItem, Rendition } from "epubjs";
 import type { RefObject } from "react";
-import type { ForNowReaderSettings } from "../../models/settings";
+import type { ForNowReaderSettings } from "../settings/schema";
 
 import { useEffect, useRef, useState } from "react";
 
-import { READER, TIMING } from "../../constants";
+import { TIMING } from "../shared/timing";
+import { READER } from "./constants";
+import { normalizeHref } from "./epubjs/href";
 import {
   applyTypography,
   buildTypographyCss,
   TYPOGRAPHY_STYLESHEET_KEY,
-} from "../../renderer/typography";
-import { normalizeHref } from "../../utils";
+} from "./epubjs/typography";
 
 export interface RenditionState {
   progress: number;

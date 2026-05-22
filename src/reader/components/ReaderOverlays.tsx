@@ -1,11 +1,11 @@
 import type { NavItem } from "epubjs";
 import type React from "react";
-import type { ForNowReaderSettings } from "../../models/settings";
+import type { ForNowReaderSettings } from "../../settings/schema";
 import type { PanelKey } from "./ReaderToolbar";
 
-import { ThemePanel } from "../ThemePanel";
-import { TocOverlay } from "../TocOverlay";
-import { TypographyPopover } from "../TypographyPopover";
+import { ThemePanel } from "./ThemePanel";
+import { TocOverlay } from "./TocOverlay";
+import { TypographyPopover } from "./TypographyPopover";
 
 interface ReaderOverlaysProps {
   activePanel: PanelKey | null;

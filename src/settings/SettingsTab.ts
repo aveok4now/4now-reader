@@ -1,16 +1,14 @@
 import type { SupportedLocale } from "../i18n";
 import type ForNowReaderPlugin from "../main";
-import type { ReaderTheme, ReadingMode } from "../models/types";
+import type { ReaderTheme, ReadingMode } from "../data/types";
 
 import { App, Modal, Notice, PluginSettingTab, Setting } from "obsidian";
-import { SLIDER_LIMITS, THEME_OPTIONS, TIMING } from "../constants";
 import { setLocale, t } from "../i18n";
-import {
-  DEFAULT_SETTINGS,
-  type ForNowReaderSettings,
-  resetSetting,
-} from "../models/settings";
-import { debounce } from "../utils";
+import { debounce } from "../shared/debounce";
+import { THEME_OPTIONS } from "../shared/theme";
+import { TIMING } from "../shared/timing";
+import { SLIDER_LIMITS } from "./constants";
+import { DEFAULT_SETTINGS, type ForNowReaderSettings, resetSetting } from "./schema";
 
 export class ForNowReaderSettingsTab extends PluginSettingTab {
   constructor(
@@ -27,15 +25,10 @@ export class ForNowReaderSettingsTab extends PluginSettingTab {
       await this.plugin.savePluginData();
       this.plugin.propagateSettingsToViews();
     };
-    const debouncedSave = debounce(
-      () => void save(),
-      TIMING.SETTINGS_SAVE_DEBOUNCE_MS,
-    );
+    const debouncedSave = debounce(() => void save(), TIMING.SETTINGS_SAVE_DEBOUNCE_MS);
 
     // Reading
-    new Setting(containerEl)
-      .setHeading()
-      .setName(t("settings.heading.reading"));
+    new Setting(containerEl).setHeading().setName(t("settings.heading.reading"));
 
     new Setting(containerEl)
       .setName(t("settings.readingMode.name"))
@@ -55,18 +48,14 @@ export class ForNowReaderSettingsTab extends PluginSettingTab {
       .setName(t("toolbar.autoHide"))
       .setDesc(t("settings.toolbarAutoHide.desc"))
       .addToggle((tog) =>
-        tog
-          .setValue(this.plugin.data.settings.toolbarAutoHide)
-          .onChange(async (v) => {
-            this.plugin.data.settings.toolbarAutoHide = v;
-            await save();
-          }),
+        tog.setValue(this.plugin.data.settings.toolbarAutoHide).onChange(async (v) => {
+          this.plugin.data.settings.toolbarAutoHide = v;
+          await save();
+        }),
       );
 
     // Appearance
-    new Setting(containerEl)
-      .setHeading()
-      .setName(t("settings.heading.appearance"));
+    new Setting(containerEl).setHeading().setName(t("settings.heading.appearance"));
 
     new Setting(containerEl)
       .setName(t("settings.theme.name"))
@@ -75,12 +64,10 @@ export class ForNowReaderSettingsTab extends PluginSettingTab {
         for (const { value, labelKey } of THEME_OPTIONS) {
           d.addOption(value, t(labelKey));
         }
-        return d
-          .setValue(this.plugin.data.settings.readerTheme)
-          .onChange(async (v) => {
-            this.plugin.data.settings.readerTheme = v as ReaderTheme;
-            await save();
-          });
+        return d.setValue(this.plugin.data.settings.readerTheme).onChange(async (v) => {
+          this.plugin.data.settings.readerTheme = v as ReaderTheme;
+          await save();
+        });
       });
 
     new Setting(containerEl)
@@ -88,11 +75,7 @@ export class ForNowReaderSettingsTab extends PluginSettingTab {
       .setDesc(t("settings.fontSize.desc"))
       .addSlider((s) =>
         s
-          .setLimits(
-            SLIDER_LIMITS.fontSize.min,
-            SLIDER_LIMITS.fontSize.max,
-            SLIDER_LIMITS.fontSize.step,
-          )
+          .setLimits(SLIDER_LIMITS.fontSize.min, SLIDER_LIMITS.fontSize.max, SLIDER_LIMITS.fontSize.step)
           .setValue(this.plugin.data.settings.fontSize)
           .setDynamicTooltip()
           .onChange(async (v) => {
@@ -116,11 +99,7 @@ export class ForNowReaderSettingsTab extends PluginSettingTab {
       .setDesc(t("settings.lineHeight.desc"))
       .addSlider((s) =>
         s
-          .setLimits(
-            SLIDER_LIMITS.lineHeight.min,
-            SLIDER_LIMITS.lineHeight.max,
-            SLIDER_LIMITS.lineHeight.step,
-          )
+          .setLimits(SLIDER_LIMITS.lineHeight.min, SLIDER_LIMITS.lineHeight.max, SLIDER_LIMITS.lineHeight.step)
           .setValue(this.plugin.data.settings.lineHeight)
           .setDynamicTooltip()
           .onChange(async (v) => {
@@ -144,11 +123,7 @@ export class ForNowReaderSettingsTab extends PluginSettingTab {
       .setDesc(t("settings.paragraphSpacing.desc"))
       .addSlider((s) =>
         s
-          .setLimits(
-            SLIDER_LIMITS.paragraphSpacing.min,
-            SLIDER_LIMITS.paragraphSpacing.max,
-            SLIDER_LIMITS.paragraphSpacing.step,
-          )
+          .setLimits(SLIDER_LIMITS.paragraphSpacing.min, SLIDER_LIMITS.paragraphSpacing.max, SLIDER_LIMITS.paragraphSpacing.step)
           .setValue(this.plugin.data.settings.paragraphSpacing)
           .setDynamicTooltip()
           .onChange(async (v) => {
@@ -161,8 +136,7 @@ export class ForNowReaderSettingsTab extends PluginSettingTab {
           .setIcon("rotate-ccw")
           .setTooltip(t("settings.reset.tooltip"))
           .onClick(async () => {
-            this.plugin.data.settings.paragraphSpacing =
-              DEFAULT_SETTINGS.paragraphSpacing;
+            this.plugin.data.settings.paragraphSpacing = DEFAULT_SETTINGS.paragraphSpacing;
             await save();
             this.display();
           }),
@@ -173,11 +147,7 @@ export class ForNowReaderSettingsTab extends PluginSettingTab {
       .setDesc(t("settings.textWidth.desc"))
       .addSlider((s) =>
         s
-          .setLimits(
-            SLIDER_LIMITS.textWidth.min,
-            SLIDER_LIMITS.textWidth.max,
-            SLIDER_LIMITS.textWidth.step,
-          )
+          .setLimits(SLIDER_LIMITS.textWidth.min, SLIDER_LIMITS.textWidth.max, SLIDER_LIMITS.textWidth.step)
           .setValue(this.plugin.data.settings.textWidth)
           .setDynamicTooltip()
           .onChange(async (v) => {
@@ -229,56 +199,41 @@ export class ForNowReaderSettingsTab extends PluginSettingTab {
       "textWidth",
       "toolbarAutoHide",
     ];
-    const isAlreadyDefault = (): boolean =>
-      resetKeys.every(
-        (k) => this.plugin.data.settings[k] === DEFAULT_SETTINGS[k],
-      );
+    const isAlreadyDefault = (): boolean => resetKeys.every((k) => this.plugin.data.settings[k] === DEFAULT_SETTINGS[k]);
 
-    new Setting(containerEl)
-      .setName(t("settings.reset.allButton"))
-      .addButton((btn) =>
-        btn
-          .setIcon("rotate-ccw")
-          .setWarning()
-          .setTooltip(
-            t(
-              isAlreadyDefault()
-                ? "settings.reset.tooltipAlreadyDefault"
-                : "settings.reset.tooltip",
-            ),
-          )
-          .onClick(() => {
-            if (isAlreadyDefault()) {
-              new Notice(t("settings.reset.alreadyDefault"));
-              return;
+    new Setting(containerEl).setName(t("settings.reset.allButton")).addButton((btn) =>
+      btn
+        .setIcon("rotate-ccw")
+        .setWarning()
+        .setTooltip(t(isAlreadyDefault() ? "settings.reset.tooltipAlreadyDefault" : "settings.reset.tooltip"))
+        .onClick(() => {
+          if (isAlreadyDefault()) {
+            new Notice(t("settings.reset.alreadyDefault"));
+            return;
+          }
+          new ResetConfirmModal(this.app, async () => {
+            const target = this.plugin.data.settings;
+            for (const k of resetKeys) {
+              resetSetting(target, k);
             }
-            new ResetConfirmModal(this.app, async () => {
-              const target = this.plugin.data.settings;
-              for (const k of resetKeys) {
-                resetSetting(target, k);
-              }
-              await save();
-              new Notice(t("settings.reset.success"));
-              this.display();
-            }).open();
-          }),
-      );
+            await save();
+            new Notice(t("settings.reset.success"));
+            this.display();
+          }).open();
+        }),
+    );
 
     // Library
-    new Setting(containerEl)
-      .setHeading()
-      .setName(t("settings.heading.library"));
+    new Setting(containerEl).setHeading().setName(t("settings.heading.library"));
 
     new Setting(containerEl)
       .setName(t("settings.scanOnStartup.name"))
       .setDesc(t("settings.scanOnStartup.desc"))
       .addToggle((tog) =>
-        tog
-          .setValue(this.plugin.data.settings.scanOnStartup)
-          .onChange(async (v) => {
-            this.plugin.data.settings.scanOnStartup = v;
-            await save();
-          }),
+        tog.setValue(this.plugin.data.settings.scanOnStartup).onChange(async (v) => {
+          this.plugin.data.settings.scanOnStartup = v;
+          await save();
+        }),
       );
 
     new Setting(containerEl)
@@ -295,26 +250,20 @@ export class ForNowReaderSettingsTab extends PluginSettingTab {
       );
 
     // Behaviour
-    new Setting(containerEl)
-      .setHeading()
-      .setName(t("settings.heading.behaviour"));
+    new Setting(containerEl).setHeading().setName(t("settings.heading.behaviour"));
 
     new Setting(containerEl)
       .setName(t("settings.openInNewLeaf.name"))
       .setDesc(t("settings.openInNewLeaf.desc"))
       .addToggle((tog) =>
-        tog
-          .setValue(this.plugin.data.settings.openInNewLeaf)
-          .onChange(async (v) => {
-            this.plugin.data.settings.openInNewLeaf = v;
-            await save();
-          }),
+        tog.setValue(this.plugin.data.settings.openInNewLeaf).onChange(async (v) => {
+          this.plugin.data.settings.openInNewLeaf = v;
+          await save();
+        }),
       );
 
     // Language
-    new Setting(containerEl)
-      .setHeading()
-      .setName(t("settings.heading.language"));
+    new Setting(containerEl).setHeading().setName(t("settings.heading.language"));
 
     new Setting(containerEl)
       .setName(t("settings.locale.name"))
@@ -355,11 +304,7 @@ class ResetConfirmModal extends Modal {
             this.onConfirm();
           }),
       )
-      .addButton((btn) =>
-        btn
-          .setButtonText(t("settings.reset.confirmNo"))
-          .onClick(() => this.close()),
-      );
+      .addButton((btn) => btn.setButtonText(t("settings.reset.confirmNo")).onClick(() => this.close()));
   }
 
   onClose(): void {

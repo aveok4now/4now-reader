@@ -1,8 +1,8 @@
 import type { Rendition } from "epubjs";
-import type { ForNowReaderSettings } from "../models/settings";
+import type { ForNowReaderSettings } from "../../settings/schema";
 
+import { resolveThemeColors } from "../../shared/theme";
 import { READER } from "../constants";
-import { resolveThemeColors } from "../utils";
 
 export const TYPOGRAPHY_STYLESHEET_KEY = "fnr-typography";
 
