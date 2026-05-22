@@ -1,4 +1,4 @@
-<h1 align="center">4now Reader</h1>
+<h1 align="center">4Now Reader</h1>
 
 <p align="center">An Obsidian plugin that opens EPUB books from your vault in a dedicated reader pane.</p>
 
