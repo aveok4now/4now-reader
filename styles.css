@@ -137,7 +137,8 @@
 .fnr-library {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
 }
 
@@ -461,6 +462,8 @@
   text-align: left;
   background: none;
   border: none;
+  border-radius: 0;
+  box-shadow: none;
   cursor: pointer;
   padding: var(--size-2-1) var(--size-4-2);
   font-size: var(--font-ui-small);
@@ -483,7 +486,7 @@
 /* Typography popover panel */
 
 .fnr-typography-panel-wrap {
-  right: 0;
+  right: 16px;
 }
 
 /* Theme panel */
@@ -538,7 +541,7 @@
 }
 
 .fnr-theme-panel-wrap {
-  right: 0;
+  right: 16px;
 }
 
 .fnr-typography-popover {
