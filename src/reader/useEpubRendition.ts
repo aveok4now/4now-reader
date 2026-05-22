@@ -130,7 +130,7 @@ export function useEpubRendition({
       const loc = location as EpubLocation;
       isNavigatingRef.current = false;
 
-      const pct = loc.start.percentage ?? 0;
+      const pct = loc.atEnd ? 1 : (loc.start.percentage ?? 0);
       const rawHref = loc.start.href ?? "";
       const pending = pendingTocHref.current;
       pendingTocHref.current = null;
@@ -164,7 +164,7 @@ export function useEpubRendition({
       locationsReadyRef.current = true;
       const loc = rendition.currentLocation();
       if (loc?.start?.cfi) {
-        const pct = loc.start.percentage ?? 0;
+        const pct = loc.atEnd ? 1 : (loc.start.percentage ?? 0);
         setProgress(pct * 100);
         if (isUserInitiated) {
           onProgressRef.current(
